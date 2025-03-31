@@ -1,0 +1,230 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Шапка с кнопками -->
+    <header class="profile-header">
+        <h1>Профиль пользователя</h1>
+        <div class="profile-nav">
+            <a href="{{ url_for('main') }}" class="btn">Главная</a>
+            <a href="{{ url_for('logout') }}" class="btn">Выход</a>
+        </div>
+    </header>
+
+    <div class="profile-content">
+        <!-- Левая колонка -->
+        <div class="profile-left">
+            <!-- Аватарка -->
+            <div class="profile-avatar">
+                <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="Аватар">
+            </div>
+
+            <!-- Слайдер друзей -->
+            <div class="friends-slider">
+                <h3>Друзья</h3>
+                <div class="slider-container">
+                    <div class="slider-track">
+                        {% for friend in friends %}
+                        <div class="slide">
+                            <a href="{{ url_for('friend_profile', login=friend.login) }}">
+                                <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="{{ friend.login }}">
+                                <span>{{ friend.login }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button class="slider-btn prev">❮</button>
+                    <button class="slider-btn next">❯</button>
+                </div>
+            </div>
+
+            <!-- Список приглашений -->
+            <div class="invitations-block">
+                <h3>Приглашения</h3>
+                {% if incoming_requests %}
+                <ul class="invitations-list">
+                    {% for request in incoming_requests %}
+                    <li>
+                        <span>{{ request.friend1_login }}</span>
+                        <div>
+                            <a href="{{ url_for('accept_friend_request', request_id=request.id) }}" class="btn-small">✓</a>
+                            <a href="{{ url_for('reject_friend_request', request_id=request.id) }}" class="btn-small">✕</a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>Нет входящих запросов</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Правая колонка -->
+        <div class="profile-right">
+            <!-- Информация о пользователе -->
+            <div class="profile-info">
+                <h2>{{ current_user.name }} {{ current_user.surname }}</h2>
+                <p><strong>Логин:</strong> {{ current_user.login }}</p>
+                <p><strong>Токен:</strong> {{ current_user.notification_token }}</p>
+
+                <div class="signature-form">
+                    <h3>Подпись для открыток</h3>
+                    <form method="POST" action="{{ url_for('update_signature') }}">
+                        <div class="form-group">
+                            <input type="text" name="signature" value="{{ current_user.postcard_signature }}" required>
+                            <button type="submit" class="btn">Обновить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Блок поиска друзей -->
+            <div class="search-friend">
+                <h3>Добавить друга</h3>
+                <form method="POST" action="{{ url_for('send_friend_request') }}">
+                    <div class="form-group">
+                        <input type="text" name="friend_login" placeholder="Введите логин друга" required>
+                        <button type="submit" class="btn">Отправить запрос</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Блок открыток -->
+            <div class="postcards-block">
+                <h2>Мои открытки</h2>
+
+                <div class="postcards-tabs">
+                    <button class="tab-btn active" onclick="openTab('sent')">Отправленные</button>
+                    <button class="tab-btn" onclick="openTab('received')">Полученные</button>
+                </div>
+
+                <div id="sent" class="tab-content active">
+                    {% if sent_postcards %}
+                    <ul class="postcards-list">
+                        {% for card in sent_postcards %}
+                        <li>
+                            <a href="{{ url_for('view_card', card_id=card.id) }}">
+                                Для {{ card.receiver_login }} ({{ card.created_at.strftime('%d.%m.%Y') }})
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p>Вы пока не отправляли открыток</p>
+                    {% endif %}
+                </div>
+
+                <div id="received" class="tab-content">
+                    {% if received_postcards %}
+                    <ul class="postcards-list">
+                        {% for card in received_postcards %}
+                        <li>
+                            <a href="{{ url_for('view_card', card_id=card.id) }}">
+                                От {{ card.sender_login }} ({{ card.created_at.strftime('%d.%m.%Y') }})
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p>У вас пока нет полученных открыток</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Стили для слайдера */
+    .friends-slider {
+        margin: 20px 0;
+    }
+
+    .slider-container {
+        position: relative;
+    }
+
+    .slider-track {
+        display: flex;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        gap: 15px;
+        padding: 10px 0;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+        .slider-track::-webkit-scrollbar {
+            display: none;
+        }
+
+    .slide {
+        flex: 0 0 auto;
+        text-align: center;
+        width: 80px;
+    }
+
+        .slide img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #4CAF50;
+        }
+
+        .slide span {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+
+    .slider-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 5px;
+        z-index: 1;
+    }
+
+        .slider-btn.prev {
+            left: -10px;
+        }
+
+        .slider-btn.next {
+            right: -10px;
+        }
+
+        .slider-btn:hover {
+            color: #4CAF50;
+        }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const track = document.querySelector('.slider-track');
+        const prevBtn = document.querySelector('.slider-btn.prev');
+        const nextBtn = document.querySelector('.slider-btn.next');
+        const slides = document.querySelectorAll('.slide');
+
+        if (slides.length > 0) {
+            const slideWidth = slides[0].offsetWidth;
+            const visibleSlides = Math.floor(track.offsetWidth / slideWidth);
+            const scrollAmount = slideWidth * visibleSlides;
+
+            prevBtn.addEventListener('click', () => {
+                track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            });
+
+            nextBtn.addEventListener('click', () => {
+                track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+        }
+    });
+</script>
+{% endblock %}
