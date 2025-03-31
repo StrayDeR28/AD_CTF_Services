@@ -44,7 +44,7 @@ int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
     if (hex_len > 0 && hex[hex_len - 1] == '\n') {
         hex_len--;
     }
-    if (hex_len % 2 != 0 || hex_len / 2 > bin_size) {
+    if (hex_len % 2 != 0 || hex_len / 2 > bin_size) {//если нечетная или слишком большая
         return -1; // Ошибка
     }
     for (size_t i = 0; i < hex_len / 2; i++) {
@@ -69,7 +69,8 @@ int main() {
 
     size_t login_len = strcspn((char *)login, "\n");
     login[login_len] = '\0';
-
+    // printf("длина %ld\n", strlen(login));
+    
     // Вывод фиксированного ключа и nonce для информации
     printf("Фиксированный ключ (HEX): ");
     print_hex(key, KEY_SIZE);
