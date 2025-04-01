@@ -43,7 +43,7 @@ int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
 
 // Подключение к базе данных ******************* нужны параметры от базы данных
 PGconn* connect_db() {
-    const char *conninfo = "dbname=your_db user=your_user password=your_password host=localhost port=5432";
+    const char *conninfo = "dbname=service user=postgres password=artem host=localhost port=5432";
     PGconn *conn = PQconnectdb(conninfo);
     if (PQstatus(conn) != CONNECTION_OK) {
         fprintf(stderr, "Ошибка подключения: %s\n", PQerrorMessage(conn));
@@ -82,13 +82,22 @@ void update_last_seen(PGconn *conn, const char *login, int last_friend_id, int l
     PQclear(res);
 }
 
+// Убирает пробелы с конца строки
+void trim(char *str) {
+    size_t len = strlen(str);
+    while (len > 0 && (str[len - 1] == ' ' || str[len - 1] == '\0')) {
+        str[len - 1] = '\0';
+        len--;
+    }
+}
+
 // Проверка новых записей
 void check_new_records(PGconn *conn, const char *login) {
     int last_friend_id, last_postcard_id;
     get_last_seen(conn, login, &last_friend_id, &last_postcard_id);
 
-    // Запросы в друзья
     char query[512];
+    // Запросы в друзья
     snprintf(query, sizeof(query), 
              "SELECT id, friend1_login FROM friends WHERE friend2_login = '%s' AND id > %d ORDER BY id",
              login, last_friend_id);
@@ -99,15 +108,15 @@ void check_new_records(PGconn *conn, const char *login) {
         return;
     }
 
-    int id;
     int rows = PQntuples(res);
     for (int i = 0; i < rows; i++) {
-        id = atoi(PQgetvalue(res, i, 0));
-        const char *friend1_login = PQgetvalue(res, i, 1);
+        char friend1_login[MAX_LEN + 1];  // Буфер для логина (64 + 1 для \0)
+        strncpy(friend1_login, PQgetvalue(res, i, 1), MAX_LEN);
+        friend1_login[MAX_LEN] = '\0';  // Гарантируем завершение строки
+        trim(friend1_login);  // Убираем пробелы
         printf("Пришел запрос в друзья от %s\n", friend1_login);
-        // if (id > last_friend_id) last_friend_id = id;
     }
-    last_friend_id = id;
+    if (rows > 0) last_friend_id = atoi(PQgetvalue(res, rows - 1, 0));  // Последний id, если есть записи
     PQclear(res);
 
     // Сообщения
@@ -123,18 +132,23 @@ void check_new_records(PGconn *conn, const char *login) {
 
     rows = PQntuples(res);
     for (int i = 0; i < rows; i++) {
-        id = atoi(PQgetvalue(res, i, 0));
-        const char *sender_login = PQgetvalue(res, i, 1);
-        const char *text = PQgetvalue(res, i, 2);
+        char sender_login[MAX_LEN + 1];  // Буфер для логина (64 + 1 для \0)
+        char text[256 + 1];             // Буфер для текста (256 + 1 для \0)
+        strncpy(sender_login, PQgetvalue(res, i, 1), MAX_LEN);
+        sender_login[MAX_LEN] = '\0';  // Гарантируем завершение строки
+        trim(sender_login);  // Убираем пробелы
+        strncpy(text, PQgetvalue(res, i, 2), 256);
+        text[256] = '\0';  // Гарантируем завершение строки
+        trim(text);  // Убираем пробелы
         printf("Сообщение от %s: %s\n", sender_login, text);
-        // if (id > last_postcard_id) last_postcard_id = id;
     }
-    last_postcard_id = id;
+    if (rows > 0) last_postcard_id = atoi(PQgetvalue(res, rows - 1, 0));  // Последний id, если есть записи
     PQclear(res);
 
-    // Обновляем последнюю просмотренную запись
     update_last_seen(conn, login, last_friend_id, last_postcard_id);
 }
+
+
 
 int main() {
     if (sodium_init() < 0) {
@@ -161,22 +175,19 @@ int main() {
     uint8_t login[MAX_LEN] = {0};
     decrypt(encrypted, login, encrypted_len, key);
     login[encrypted_len] = '\0';
-    printf("Расшифрованный логин: %s\n", login);
+    printf("Расшифрованный логин: %s\n", login);//потом закомментить
 
     // Подключение к базе
     PGconn *conn = connect_db();
     if (!conn) return 1;
 
-    // Проверка новых записей
-    check_new_records(conn, (char *)login);
-
     // Пока пользователь подключен (имитация)
     printf("Ожидание новых записей... (нажмите Ctrl+C для выхода)\n");
     while (1) {
         check_new_records(conn, (char *)login);
-        sleep(5);  // Проверка каждые 5 секунд
+        sleep(2);
     }
-
+    
     PQfinish(conn);
     return 0;
 }
