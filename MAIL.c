@@ -21,7 +21,8 @@ static const uint8_t key[32] = {
     0x73, 0x20, 0x6F, 0x76, 0x65, 0x72, 0x20, 0x6C
 };
 
-// Функции шифрования/расшифровки
+// Функции шифрования/расшифровки 
+// потом убрать зашифровку, здесь она ни к чему
 void encrypt(const uint8_t *plaintext, uint8_t *ciphertext, size_t len, const uint8_t *key) {
     crypto_stream_chacha20_xor(ciphertext, plaintext, len, nonce, key);
 }
@@ -175,7 +176,7 @@ int main() {
     uint8_t login[MAX_LEN] = {0};
     decrypt(encrypted, login, encrypted_len, key);
     login[encrypted_len] = '\0';
-    printf("Расшифрованный логин: %s\n", login);//потом закомментить
+    printf("Расшифрованный логин: %s\n", login);//потом удалить
 
     // Подключение к базе
     PGconn *conn = connect_db();

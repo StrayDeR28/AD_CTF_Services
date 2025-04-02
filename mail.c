@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+// чисто крипта без баз данных
 
 #define MAX_LEN 64  // Максимальная длина логина
 #define KEY_SIZE crypto_stream_chacha20_KEYBYTES  // 32 байта

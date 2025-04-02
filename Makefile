@@ -1,7 +1,7 @@
-TARGET = MAIL
+TARGET = mail_inet
 SRC = $(TARGET).c  
 CFLAGS = -I/usr/include/postgresql
-LIBS = -lsodium -lpq
+LIBS = -lsodium -lpq -pthread
 
 $(TARGET): $(SRC)
 	gcc -o $(TARGET) $(SRC) $(CFLAGS) $(LIBS)
