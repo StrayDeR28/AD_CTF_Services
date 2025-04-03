@@ -29,10 +29,6 @@ static const uint8_t key[32] = {
 };
 
 // Функции шифрования/расшифровки 
-// потом убрать зашифровку, здесь она ни к чему
-void encrypt(const uint8_t *plaintext, uint8_t *ciphertext, size_t len, const uint8_t *key) {
-    crypto_stream_chacha20_xor(ciphertext, plaintext, len, nonce, key);
-}
 
 void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len, const uint8_t *key) {
     crypto_stream_chacha20_xor(plaintext, ciphertext, len, nonce, key);
@@ -83,29 +79,31 @@ PGconn* connect_db() {
 
 // Получение последней показанной записи
 void get_last_seen(PGconn *conn, const char *login, int *last_friend_id, int *last_postcard_id) {
-    char query[256];
-    snprintf(query, sizeof(query), "SELECT last_friend_id, last_postcard_id FROM user_last_seen WHERE login = '%s'", login);
-    PGresult *res = PQexec(conn, query);
-    if (PQresultStatus(res) == PGRES_TUPLES_OK && PQntuples(res) > 0) {
-        *last_friend_id = atoi(PQgetvalue(res, 0, 0));
-        *last_postcard_id = atoi(PQgetvalue(res, 0, 1));
-    } else {    // Если записи нет, создаем новую
+    const char *paramValues[1] = {login};
+    PGresult *res = PQexecParams(conn,
+                                 "SELECT last_friend_id, last_postcard_id FROM user_last_seen WHERE login = $1",
+                                 1, NULL, paramValues, NULL, NULL, 0);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0) {
         *last_friend_id = 0;
         *last_postcard_id = 0;
-        snprintf(query, sizeof(query), "INSERT INTO user_last_seen (login, last_friend_id, last_postcard_id) VALUES ('%s', 0, 0) ON CONFLICT DO NOTHING", login);
-        PQexec(conn, query);
+    } else {//если записи нет, создаем новую
+        *last_friend_id = atoi(PQgetvalue(res, 0, 0));
+        *last_postcard_id = atoi(PQgetvalue(res, 0, 1));
     }
     PQclear(res);
 }
 
 // Обновление последней показанной записи
 void update_last_seen(PGconn *conn, const char *login, int last_friend_id, int last_postcard_id) {
-    char query[256];
-    snprintf(query, sizeof(query), 
-             "INSERT INTO user_last_seen (login, last_friend_id, last_postcard_id) VALUES ('%s', %d, %d) "
-             "ON CONFLICT (login) DO UPDATE SET last_friend_id = %d, last_postcard_id = %d",
-             login, last_friend_id, last_postcard_id, last_friend_id, last_postcard_id);
-    PGresult *res = PQexec(conn, query);
+    char last_friend_id_str[16], last_postcard_id_str[16];
+    snprintf(last_friend_id_str, sizeof(last_friend_id_str), "%d", last_friend_id);
+    snprintf(last_postcard_id_str, sizeof(last_postcard_id_str), "%d", last_postcard_id);
+    const char *paramValues[3] = {login, last_friend_id_str, last_postcard_id_str};
+    PGresult *res = PQexecParams(conn,
+                                 "INSERT INTO user_last_seen (login, last_friend_id, last_postcard_id) "
+                                 "VALUES ($1, $2, $3) ON CONFLICT (login) "
+                                 "DO UPDATE SET last_friend_id = $2, last_postcard_id = $3",
+                                 3, NULL, paramValues, NULL, NULL, 0);
     PQclear(res);
 }
 
@@ -133,17 +131,27 @@ void check_new_records(PGconn *conn, const char *login, int client_fd) {
     int last_friend_id, last_postcard_id;
     get_last_seen(conn, login, &last_friend_id, &last_postcard_id);
 
-    char query[512], response[1024];
-    // Запросы в друзья
-    snprintf(query, sizeof(query), 
-             "SELECT id, friend1_login FROM friends WHERE friend2_login = '%s' AND id > %d ORDER BY id",
-             login, last_friend_id);
-    PGresult *res = PQexec(conn, query);
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        snprintf(response, sizeof(response), "Ошибка базы данных (friends): %s\n", PQerrorMessage(conn));
-        send(client_fd, response, strlen(response), 0);
+    char response[1024];
+    const char *paramValues[2];
+    char last_friend_id_str[16], last_postcard_id_str[16];
 
-        // printf("Отправка клиенту %d: %s", client_fd, response);
+    // Преобразуем int в строки для параметров
+    snprintf(last_friend_id_str, sizeof(last_friend_id_str), "%d", last_friend_id);
+    snprintf(last_postcard_id_str, sizeof(last_postcard_id_str), "%d", last_postcard_id);
+
+    // Запрос для friends
+    paramValues[0] = login;
+    paramValues[1] = last_friend_id_str;
+    PGresult *res = PQexecParams(conn,
+                                 "SELECT id, friend1_login FROM friends WHERE friend2_login = $1 AND id > $2 ORDER BY id",
+                                 2,       // Количество параметров
+                                 NULL,    // Типы параметров (NULL = автоопределение)
+                                 paramValues,
+                                 NULL,    // Длины параметров (NULL для строк, завершающихся \0)
+                                 NULL,    // Форматы параметров (NULL = текст)
+                                 0);      // Результат в текстовом формате
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        send_response(client_fd, "Ошибка базы данных (friends): %s\n", PQerrorMessage(conn));
         PQclear(res);
         return;
     }
@@ -154,24 +162,25 @@ void check_new_records(PGconn *conn, const char *login, int client_fd) {
         strncpy(friend1_login, PQgetvalue(res, i, 1), MAX_LEN);
         friend1_login[MAX_LEN] = '\0';
         trim(friend1_login);
-        snprintf(response, sizeof(response), "Пришел запрос в друзья от %s\n", friend1_login);
-        send(client_fd, response, strlen(response), 0);
-        
+        send_response(client_fd, "Пришел запрос в друзья от %s\n", friend1_login);        
         // printf("Отправка клиенту %d: %s", client_fd, response);
     }
     if (rows > 0) last_friend_id = atoi(PQgetvalue(res, rows - 1, 0));  // Последний id, если есть записи
     PQclear(res);
 
-    // Сообщения
-    snprintf(query, sizeof(query), 
-             "SELECT id, sender_login, text FROM postcards WHERE receiver_login = '%s' AND id > %d ORDER BY id",
-             login, last_postcard_id);
-    res = PQexec(conn, query);
+    // Запрос для postcards
+    paramValues[0] = login;
+    paramValues[1] = last_postcard_id_str;
+    res = PQexecParams(conn,
+                       "SELECT id, sender_login, text FROM postcards WHERE receiver_login = $1 AND id > $2 ORDER BY id",
+                       2,
+                       NULL,
+                       paramValues,
+                       NULL,
+                       NULL,
+                       0);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        snprintf(response, sizeof(response), "Ошибка базы данных (postcards): %s\n", PQerrorMessage(conn));
-        send(client_fd, response, strlen(response), 0);
-
-        // printf("Отправка клиенту %d: %s", client_fd, response);
+        send_response(client_fd, "Ошибка базы данных (postcards): %s\n", PQerrorMessage(conn));
         PQclear(res);
         return;
     }
@@ -186,8 +195,7 @@ void check_new_records(PGconn *conn, const char *login, int client_fd) {
         strncpy(text, PQgetvalue(res, i, 2), 256);
         text[256] = '\0';
         trim(text);
-        snprintf(response, sizeof(response), "Сообщение от %s: %s\n", sender_login, text);
-        send(client_fd, response, strlen(response), 0);
+        send_response(client_fd, "Сообщение от %s: %s\n", sender_login, text);
 
         // printf("Отправка клиенту %d: %s", client_fd, response);
     }
