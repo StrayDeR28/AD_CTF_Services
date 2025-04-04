@@ -11,10 +11,10 @@ VALUES (7, 'charlie', 'lexa', 'Привет! ++  ', false),
 SELECT * FROM public.user_last_seen
 -- user_last_seen friends postcards
 
-DELETE FROM friends
+DELETE FROM postcards
 WHERE id NOT IN (
-    SELECT id FROM friends
+    SELECT id FROM postcards
     ORDER BY id
-    LIMIT 12
+    LIMIT 6
 );
--- user_last_seen friends postcards
+-- user_last_seen friends 12 postcards 6

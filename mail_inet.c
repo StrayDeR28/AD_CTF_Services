@@ -78,15 +78,18 @@ PGconn* connect_db() {
 }
 
 // Получение последней показанной записи
-void get_last_seen(PGconn *conn, const char *login, int *last_friend_id, int *last_postcard_id) {
-    const char *paramValues[1] = {login};
+void get_last_seen(PGconn *conn, const char *login, const char *ip, int *last_friend_id, int *last_postcard_id) {
+    const char *paramValues[2] = {login, ip};
     PGresult *res = PQexecParams(conn,
-                                 "SELECT last_friend_id, last_postcard_id FROM user_last_seen WHERE login = $1",
-                                 1, NULL, paramValues, NULL, NULL, 0);
+                                 "SELECT last_friend_id, last_postcard_id FROM user_last_seen WHERE login = $1 AND ip = $2",
+                                 2, NULL, paramValues, NULL, NULL, 0);
     if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0) {
-        *last_friend_id = 0;
+        *last_friend_id = 0;    //если записи нет, создаем новую
         *last_postcard_id = 0;
-    } else {//если записи нет, создаем новую
+        PQexecParams(conn,
+                     "INSERT INTO user_last_seen (login, ip, last_friend_id, last_postcard_id) VALUES ($1, $2, 0, 0) ON CONFLICT DO NOTHING",
+                     2, NULL, paramValues, NULL, NULL, 0);
+    } else {
         *last_friend_id = atoi(PQgetvalue(res, 0, 0));
         *last_postcard_id = atoi(PQgetvalue(res, 0, 1));
     }
@@ -94,16 +97,16 @@ void get_last_seen(PGconn *conn, const char *login, int *last_friend_id, int *la
 }
 
 // Обновление последней показанной записи
-void update_last_seen(PGconn *conn, const char *login, int last_friend_id, int last_postcard_id) {
+void update_last_seen(PGconn *conn, const char *login, const char *ip, int last_friend_id, int last_postcard_id) {
     char last_friend_id_str[16], last_postcard_id_str[16];
     snprintf(last_friend_id_str, sizeof(last_friend_id_str), "%d", last_friend_id);
     snprintf(last_postcard_id_str, sizeof(last_postcard_id_str), "%d", last_postcard_id);
-    const char *paramValues[3] = {login, last_friend_id_str, last_postcard_id_str};
+    const char *paramValues[4] = {login, ip, last_friend_id_str, last_postcard_id_str};
     PGresult *res = PQexecParams(conn,
-                                 "INSERT INTO user_last_seen (login, last_friend_id, last_postcard_id) "
-                                 "VALUES ($1, $2, $3) ON CONFLICT (login) "
-                                 "DO UPDATE SET last_friend_id = $2, last_postcard_id = $3",
-                                 3, NULL, paramValues, NULL, NULL, 0);
+                                 "INSERT INTO user_last_seen (login, ip, last_friend_id, last_postcard_id) "
+                                 "VALUES ($1, $2, $3, $4) ON CONFLICT (login, ip) "
+                                 "DO UPDATE SET last_friend_id = $3, last_postcard_id = $4",
+                                 4, NULL, paramValues, NULL, NULL, 0);
     PQclear(res);
 }
 
@@ -127,9 +130,9 @@ static void send_response(int client_fd, const char *format, ...) {
 }
 
 // Проверка новых записей
-void check_new_records(PGconn *conn, const char *login, int client_fd) {
+void check_new_records(PGconn *conn, const char *login, const char * ip, int client_fd) {
     int last_friend_id, last_postcard_id;
-    get_last_seen(conn, login, &last_friend_id, &last_postcard_id);
+    get_last_seen(conn, login, ip, &last_friend_id, &last_postcard_id);
 
     char response[1024];
     const char *paramValues[2];
@@ -202,7 +205,7 @@ void check_new_records(PGconn *conn, const char *login, int client_fd) {
     if (rows > 0) last_postcard_id = atoi(PQgetvalue(res, rows - 1, 0));  // Последний id, если есть записи
     PQclear(res);
 
-    update_last_seen(conn, login, last_friend_id, last_postcard_id);
+    update_last_seen(conn, login, ip, last_friend_id, last_postcard_id);
 }
 
 void* handle_client(void *arg) {
@@ -214,6 +217,18 @@ void* handle_client(void *arg) {
         close(client_fd);
         pthread_exit(NULL);
     }
+
+    // Получаем IP-адрес клиента
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    if (getpeername(client_fd, (struct sockaddr*)&client_addr, &client_len) < 0) {
+        send_response(client_fd, "Ошибка получения IP клиента\n");
+        PQfinish(conn);
+        close(client_fd);
+        pthread_exit(NULL);
+    }
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &client_addr.sin_addr, ip, INET_ADDRSTRLEN);
 
     send_response(client_fd, "Введите токен (HEX): ");
   
@@ -259,8 +274,8 @@ void* handle_client(void *arg) {
         close(client_fd);
         pthread_exit(NULL);
     }
-
-    send_response(client_fd, "Логин: %s\n", login);
+//убрать айпи после========================================
+    send_response(client_fd, "Логин: %s, IP: %s\n", login, ip);
 
     // Подписываемся на уведомления для этого логина
     char listen_query[256];
@@ -276,7 +291,7 @@ void* handle_client(void *arg) {
     PQclear(res);
 
     // Обрабатываем существующие записи
-    check_new_records(conn, (char*)login, client_fd);
+    check_new_records(conn, (char*)login, ip, client_fd);
 
     if (PQsetnonblocking(conn, 1) == -1) {
         send_response(client_fd, "Ошибка установки асинхронного режима: %s\n", PQerrorMessage(conn));
@@ -293,9 +308,9 @@ void* handle_client(void *arg) {
         if (notify) {
             // Проверяем, относится ли уведомление к этому логину
             if (strcmp(notify->relname, "new_friend") == 0 && strcmp(notify->extra, login) == 0) {
-                check_new_records(conn, (char*)login, client_fd);
+                check_new_records(conn, (char*)login, ip, client_fd);
             } else if (strcmp(notify->relname, "new_postcard") == 0 && strcmp(notify->extra, login) == 0) {
-                check_new_records(conn, (char*)login, client_fd);
+                check_new_records(conn, (char*)login, ip, client_fd);
             }
             free(notify);
         } else {
