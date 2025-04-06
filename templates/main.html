@@ -1,5 +1,4 @@
 ﻿{% extends "base.html" %}
-
 {% block title %}Главная страница{% endblock %}
 
 {% block content %}
@@ -40,8 +39,10 @@
         <!-- Центральная часть - превью и форма -->
         <div class="card-center">
             <div class="card-preview">
-                <div id="card-preview-container">
-                    <img id="card-preview" src="" alt="Предпросмотр открытки">
+                <div class="card-preview-container">
+                    <img class="card-preview-bg" src="{{ url_for('static', filename='images/backgrounds/' + backgrounds[0]) }}"
+                         alt="Фон открытки" style="width: 100%; height: 100%; object-fit: contain;">
+                    <!-- Текст будет добавлен через JavaScript -->
                 </div>
             </div>
 
@@ -81,7 +82,6 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="button" id="preview-btn" class="btn">Предпросмотр</button>
                         <button type="button" id="send-btn" class="btn">Отправить</button>
                     </div>
                 </form>
@@ -113,47 +113,28 @@
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Обработка предпросмотра
-        document.getElementById('preview-btn').addEventListener('click', function() {
-            const formData = new FormData(document.getElementById('card-form'));
-
-            fetch('{{ url_for("generate_card") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('card-preview').src = data.image;
-            });
+        // Автоматическое обновление фона при выборе
+        document.getElementById('background').addEventListener('change', function() {
+            const bgValue = this.value;
+            document.querySelector('.card-preview-bg').src = `/static/images/backgrounds/${bgValue}`;
         });
 
         // Обработка отправки
         document.getElementById('send-btn').addEventListener('click', function() {
             const formData = new FormData(document.getElementById('card-form'));
 
+            // Добавляем текущие координаты текста
+            formData.set('pos_x', document.getElementById('pos_x').value);
+            formData.set('pos_y', document.getElementById('pos_y').value);
+            formData.set('color', document.getElementById('color').value);
+            formData.set('font', document.getElementById('font').value);
+
             fetch('{{ url_for("send_postcard") }}', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                }
-            });
-        });
+            window.location.reload();
 
-        // Обработка скачивания
-        document.getElementById('download-btn').addEventListener('click', function() {
-            const formData = new FormData(document.getElementById('card-form'));
-
-            fetch('{{ url_for("download_card") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                window.location.href = '{{ url_for("download_file", filename="") }}' + data.filename;
-            });
         });
     });
 </script>

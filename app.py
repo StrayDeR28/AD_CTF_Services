@@ -304,6 +304,7 @@ def send_postcard():
     is_private = True if request.form.get('is_private') else False
     background = request.form.get('background')
     font = request.form.get('font', 'Arial')
+    font_size = int(request.form.get('font_size', 24))
     color = request.form.get('color', '#000000')
     pos_x = int(request.form.get('pos_x', 50))
     pos_y = int(request.form.get('pos_y', 50))
@@ -318,7 +319,7 @@ def send_postcard():
         return redirect(url_for('main'))
     
     # Создаем изображение открытки
-    img = create_card_image(front_text, background, font, color, pos_x, pos_y)
+    img = create_card_image(front_text, background, font, color, pos_x, pos_y, font_size)
     
     # Конвертируем изображение в бинарные данные
     img_byte_arr = io.BytesIO()
@@ -380,27 +381,33 @@ def generate_card():
     
     return jsonify({'image': f'data:image/png;base64,{img_str}'})
 
-# Скачивание открытки
-@app.route('/download_card', methods=['POST'])
+@app.route('/download_card/<int:card_id>')
 @login_required
-def download_card():
-    front_text = request.form.get('front_text')
-    background = request.form.get('background')
-    font = request.form.get('font', 'Arial')
-    color = request.form.get('color', '#000000')
-    pos_x = int(request.form.get('pos_x', 50))
-    pos_y = int(request.form.get('pos_y', 50))
+def download_card(card_id):
+    postcard = Postcard.query.get_or_404(card_id)
     
-    # Создаем изображение
-    img = create_card_image(front_text, background, font, color, pos_x, pos_y)
+    # Проверяем, что пользователь имеет доступ к открытке
+    if (current_user.login != postcard.sender_login and 
+        current_user.login != postcard.receiver_login and
+        postcard.is_private):
+        abort(403)
     
-    # Сохраняем во временный файл
-    filename = f"postcard_{current_user.login}_{int(time.time())}.png"
+    # Создаем временный файл
+    filename = f"postcard_{postcard.id}.png"
     filepath = os.path.join('static', 'temp', filename)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    img.save(filepath, "PNG")
     
-    return jsonify({'filename': filename})
+    # Сохраняем изображение
+    with open(filepath, 'wb') as f:
+        f.write(postcard.image_data)
+    
+    return send_from_directory(
+        os.path.join('static', 'temp'),
+        filename,
+        as_attachment=True,
+        mimetype='image/png'
+    )
+
 
 # Получение файла для скачивания
 @app.route('/download/<filename>')
@@ -460,25 +467,32 @@ def get_backgrounds():
             backgrounds.append(filename)
     return backgrounds
 
-def create_card_image(front_text, background, font, color, pos_x, pos_y):
-    # Загружаем фон
-    bg_path = os.path.join(app.config['UPLOAD_FOLDER'], background)
-    img = Image.open(bg_path)
-    
-    # Создаем объект для рисования
-    draw = ImageDraw.Draw(img)
-    
+def create_card_image(front_text, background, font, color, pos_x, pos_y, font_size):
     try:
-        # Пытаемся загрузить выбранный шрифт
-        font = ImageFont.truetype(font + '.ttf', 40)
-    except:
-        # Если шрифт не доступен, используем стандартный
-        font = ImageFont.load_default()
-    
-    # Рисуем текст
-    draw.text((pos_x, pos_y), front_text, fill=color, font=font)
-    # img = add_signature (img, string)
-    return img
+        # Загрузка фона
+        bg_path = os.path.join(app.config['UPLOAD_FOLDER'], background)
+        img = Image.open(bg_path).convert("RGBA")
+        
+        # Настройки шрифта
+        font_map = {
+            'Arial': 'arial.ttf',
+            'Times New Roman': 'times.ttf',
+            'Courier New': 'cour.ttf'
+        }
+        font_path = font_map.get(font, 'arial.ttf')
+        
+        
+        
+        font_obj = ImageFont.truetype(font_path, 24)
+
+        # Рисуем текст
+        draw = ImageDraw.Draw(img)
+        draw.text((int(pos_x), int(pos_y)), front_text, fill=color, font=font_obj)
+        
+        return img
+    except Exception as e:
+        print(f"Error creating card image: {str(e)}")
+        raise
     
 def add_signature (img, string):
     return img

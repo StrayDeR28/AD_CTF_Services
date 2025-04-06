@@ -1,5 +1,4 @@
 ﻿{% extends "base.html" %}
-
 {% block title %}Вход{% endblock %}
 
 {% block content %}
@@ -14,11 +13,9 @@
             <label for="password">Пароль:</label>
             <input type="password" id="password" name="password" required>
         </div>
-        <div class="form-group">
-            <input type="checkbox" id="remember" name="remember">
-            <label for="remember">Запомнить меня</label>
+        <div class="form-group" style="text-align: center; margin-top: 20px;">
+            <button type="submit" class="btn">Войти</button>
         </div>
-        <button type="submit" class="btn">Войти</button>
     </form>
     <p>Ещё нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрируйтесь</a></p>
 </div>

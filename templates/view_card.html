@@ -1,11 +1,10 @@
-﻿{% extends "base.html" %}
-
+﻿{% extends "base.html" %}﻿
 {% block title %}Просмотр открытки{% endblock %}
 
 {% block content %}
 <div class="view-card-container">
-    <div class="card-display">
-        <img src="data:image/png;base64,{{ postcard.image_data | b64encode }}" alt="Открытка">
+    <div class="card-display" style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
+        <img src="data:image/png;base64,{{ postcard.image_data | b64encode }}" alt="Открытка" style="max-width: 100%; max-height: 500px; object-fit: contain;">
     </div>
 
     {% if show_private or not postcard.is_private %}
@@ -26,6 +25,8 @@
 
     <div class="card-actions">
         <a href="{{ url_for('main') }}" class="btn">На главную</a>
+        <a href="{{ url_for('download_card', card_id=postcard.id) }}" class="btn">Скачать открытку</a>
     </div>
 </div>
+
 {% endblock %}
