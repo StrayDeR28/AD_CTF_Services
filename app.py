@@ -475,9 +475,11 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y):
     
     # Рисуем текст
     draw.text((pos_x, pos_y), front_text, fill=color, font=font)
-    
+   # img = add_signature (img, string)
     return img
-
+    
+def add_signature (img, string):
+    return img
 # Создание базы данных
 with app.app_context():
     db.create_all()
