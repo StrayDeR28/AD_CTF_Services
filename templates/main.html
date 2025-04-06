@@ -1,0 +1,161 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Главная страница{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <header class="header">
+        <h1>Создайте открытку</h1>
+        <nav>
+            <a href="{{ url_for('profile') }}" class="btn">Профиль</a>
+            <a href="{{ url_for('logout') }}" class="btn">Выйти</a>
+        </nav>
+    </header>
+
+    <div class="card-creation-area">
+        <!-- Левая часть - настройки текста -->
+        <div class="text-settings">
+            <h3>Настройки текста</h3>
+            <div class="form-group">
+                <label for="font">Шрифт:</label>
+                <select id="font" name="font">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="color">Цвет текста:</label>
+                <input type="color" id="color" name="color" value="#000000">
+            </div>
+            <div class="form-group">
+                <label>Позиция текста:</label>
+                <div class="position-controls">
+                    <label>X: <input type="number" id="pos_x" name="pos_x" value="50" min="0" max="500"></label>
+                    <label>Y: <input type="number" id="pos_y" name="pos_y" value="50" min="0" max="500"></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Центральная часть - превью и форма -->
+        <div class="card-center">
+            <div class="card-preview">
+                <div id="card-preview-container">
+                    <img id="card-preview" src="" alt="Предпросмотр открытки">
+                </div>
+            </div>
+
+            <div class="card-form">
+                <form id="card-form">
+                    <div class="form-group">
+                        <label for="background">Фон открытки:</label>
+                        <select id="background" name="background" required>
+                            {% for bg in backgrounds %}
+                            <option value="{{ bg }}">{{ bg }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="front_text">Текст на открытке:</label>
+                        <input type="text" id="front_text" name="front_text" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">Сообщение внутри:</label>
+                        <textarea id="message" name="message" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="receiver">Получатель:</label>
+                        <select id="receiver" name="receiver" required>
+                            {% for friend in friends %}
+                            <option value="{{ friend.login }}">{{ friend.login }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="is_private" name="is_private">
+                        <label for="is_private">Приватное сообщение</label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="preview-btn" class="btn">Предпросмотр</button>
+                        <button type="button" id="send-btn" class="btn">Отправить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Правая часть - последние открытки -->
+        <div class="recent-cards">
+            <h3>Последние открытки</h3>
+            <ul>
+                {% for card in recent_postcards %}
+                <li>
+                    <a href="{{ url_for('view_card', card_id=card.id) }}">
+                        {% if card.sender_login == current_user.login %}
+                        Для {{ card.receiver_login }}
+                        {% else %}
+                        От {{ card.sender_login }}
+                        {% endif %}
+                        ({{ card.created_at.strftime('%d.%m.%Y') }})
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Обработка предпросмотра
+        document.getElementById('preview-btn').addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('card-form'));
+
+            fetch('{{ url_for("generate_card") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('card-preview').src = data.image;
+            });
+        });
+
+        // Обработка отправки
+        document.getElementById('send-btn').addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('card-form'));
+
+            fetch('{{ url_for("send_postcard") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                }
+            });
+        });
+
+        // Обработка скачивания
+        document.getElementById('download-btn').addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('card-form'));
+
+            fetch('{{ url_for("download_card") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = '{{ url_for("download_file", filename="") }}' + data.filename;
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}
