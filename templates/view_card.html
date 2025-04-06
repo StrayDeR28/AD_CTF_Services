@@ -1,0 +1,41 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Просмотр открытки{% endblock %}
+
+{% block content %}
+<div class="view-card-container">
+    <div class="card-display">
+        <img src="{{ url_for('static', filename='images/backgrounds/' + postcard.background) }}" alt="Фон открытки">
+        <div class="card-front-text" style="
+            position: absolute;
+            left: {{ postcard.pos_x }}px;
+            top: {{ postcard.pos_y }}px;
+            color: {{ postcard.color }};
+            font-family: '{{ postcard.font }}', sans-serif;
+            font-size: 24px;
+        ">
+            {{ postcard.front_text }}
+        </div>
+    </div>
+
+    {% if show_private or not postcard.is_private %}
+    <div class="card-message">
+        <h3>Сообщение:</h3>
+        <p>{{ postcard.text }}</p>
+    </div>
+    {% else %}
+    <div class="card-message">
+        <p>Это приватное сообщение, доступное только отправителю и получателю.</p>
+    </div>
+    {% endif %}
+
+    <div class="card-info">
+        <p>Отправитель: <a href="{{ url_for('friend_profile', login=postcard.sender_login) }}">{{ sender.name }} {{ sender.surname }}</a></p>
+        <p>Дата отправки: {{ postcard.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+    </div>
+
+    <div class="card-actions">
+        <a href="{{ url_for('main') }}" class="btn">На главную</a>
+    </div>
+</div>
+{% endblock %}
