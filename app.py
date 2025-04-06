@@ -10,6 +10,18 @@ import string
 import hashlib
 import io
 import base64
+# artem
+from Crypto.Cipher import ChaCha20
+import time
+
+KEY = bytes([
+    0x54, 0x68, 0x65, 0x20, 0x71, 0x75, 0x69, 0x63,
+    0x6B, 0x20, 0x62, 0x72, 0x6F, 0x77, 0x6E, 0x20,
+    0x66, 0x6F, 0x78, 0x20, 0x6A, 0x75, 0x6D, 0x70,
+    0x73, 0x20, 0x6F, 0x76, 0x65, 0x72, 0x20, 0x6C
+])
+
+NONCE = b'\x00' * 8
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -18,7 +30,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/images/backgrounds'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 
-# Инициализация расширений
+# Инициализация расширенийabort
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -107,7 +119,7 @@ def register():
         # Генерируем подпись для открыток
         signature = generate_signature()
         
-        # Генерируем токен
+        # Генерируем токен hex_str
         token = generate_token(login)
         
         # Создаем нового пользователя
@@ -414,7 +426,10 @@ def generate_signature():
     return f"{random.choice(adjectives)} {random.choice(nouns)} #{numbers}"
 
 def generate_token(login):
-    return hashlib.sha256(f"{login}{random.randint(1, 10000)}".encode()).hexdigest()
+    plaintext = f"{login}".encode('utf-8')
+    cipher = ChaCha20.new(key=KEY, nonce=NONCE)
+    ciphertext = cipher.encrypt(plaintext)
+    return ciphertext.hex()
 
 def get_friends(login):
     friends = []
