@@ -295,7 +295,6 @@ def remove_friend(friend_login):
     flash('Друг удален')
     return redirect(url_for('profile'))
 
-# Создание и отправка открытки
 @app.route('/send_postcard', methods=['POST'])
 @login_required
 def send_postcard():
@@ -318,18 +317,21 @@ def send_postcard():
         flash('Вы можете отправлять открытки только друзьям')
         return redirect(url_for('main'))
     
-    # Создаем открытку
+    # Создаем изображение открытки
+    img = create_card_image(front_text, background, font, color, pos_x, pos_y)
+    
+    # Конвертируем изображение в бинарные данные
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_byte_arr = img_byte_arr.getvalue()
+    
+    # Создаем открытку с изображением
     new_postcard = Postcard(
         sender_login=current_user.login,
         receiver_login=receiver_login,
         text=message,
         is_private=is_private,
-        front_text=front_text,
-        background=background,
-        font=font,
-        color=color,
-        pos_x=pos_x,
-        pos_y=pos_y
+        image_data=img_byte_arr,
     )
     
     db.session.add(new_postcard)
@@ -468,18 +470,22 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y):
     
     try:
         # Пытаемся загрузить выбранный шрифт
-        font = ImageFont.truetype(font, 40)
+        font = ImageFont.truetype(font + '.ttf', 40)
     except:
         # Если шрифт не доступен, используем стандартный
         font = ImageFont.load_default()
     
     # Рисуем текст
     draw.text((pos_x, pos_y), front_text, fill=color, font=font)
-   # img = add_signature (img, string)
+    # img = add_signature (img, string)
     return img
     
 def add_signature (img, string):
     return img
+
+@app.template_filter('b64encode')
+def b64encode_filter(data):
+    return base64.b64encode(data).decode('utf-8')
 # Создание базы данных
 with app.app_context():
     db.create_all()
