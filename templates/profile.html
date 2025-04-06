@@ -227,4 +227,23 @@
         }
     });
 </script>
+<script>
+    function openTab(tabName) {
+        // Скрыть все вкладки
+        const tabContents = document.getElementsByClassName('tab-content');
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].classList.remove('active');
+        }
+
+        // Деактивировать все кнопки
+        const tabButtons = document.getElementsByClassName('tab-btn');
+        for (let i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].classList.remove('active');
+        }
+
+        // Показать выбранную вкладку и активировать кнопку
+        document.getElementById(tabName).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+</script>
 {% endblock %}
