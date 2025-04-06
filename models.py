@@ -27,10 +27,5 @@ class Postcard(db.Model):
     receiver_login = db.Column(db.String(100), db.ForeignKey('user.login'), nullable=False)
     text = db.Column(db.Text)
     is_private = db.Column(db.Boolean, default=False, nullable=False)
-    front_text = db.Column(db.String(200), nullable=False)
-    background = db.Column(db.String(100), nullable=False)
-    font = db.Column(db.String(100), nullable=False)
-    color = db.Column(db.String(50), nullable=False)
-    pos_x = db.Column(db.Integer, nullable=False)
-    pos_y = db.Column(db.Integer, nullable=False)
+    image_data = db.Column(db.LargeBinary)  # Будем хранить бинарные данные изображения
     created_at = db.Column(db.DateTime, server_default=db.func.now())

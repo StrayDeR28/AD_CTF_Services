@@ -5,17 +5,7 @@
 {% block content %}
 <div class="view-card-container">
     <div class="card-display">
-        <img src="{{ url_for('static', filename='images/backgrounds/' + postcard.background) }}" alt="Фон открытки">
-        <div class="card-front-text" style="
-            position: absolute;
-            left: {{ postcard.pos_x }}px;
-            top: {{ postcard.pos_y }}px;
-            color: {{ postcard.color }};
-            font-family: '{{ postcard.font }}', sans-serif;
-            font-size: 24px;
-        ">
-            {{ postcard.front_text }}
-        </div>
+        <img src="data:image/png;base64,{{ postcard.image_data | b64encode }}" alt="Открытка">
     </div>
 
     {% if show_private or not postcard.is_private %}
