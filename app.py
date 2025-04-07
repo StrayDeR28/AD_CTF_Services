@@ -564,7 +564,7 @@ def get_backgrounds():
     return backgrounds
 
 
-def create_card_image(front_text, background, font, color, pos_x, pos_y, font_size):
+def create_card_image(front_text, background, font, color, pos_x, pos_y, font_size=24):
     try:
         # Загрузка фона
         bg_path = os.path.join(app.config["UPLOAD_FOLDER"], background)
@@ -576,9 +576,14 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y, font_si
             "Times New Roman": "times.ttf",
             "Courier New": "cour.ttf",
         }
-        font_path = font_map.get(font, "arial.ttf")
 
-        font_obj = ImageFont.truetype(font_path, 24)
+        try:
+            font_path = font_map.get(font, "arial.ttf")
+            font_obj = ImageFont.truetype(font_path, font_size)
+        except OSError:
+            # Если шрифт не найден, используем стандартный
+            font_obj = ImageFont.load_default()
+            app.logger.warning(f"Шрифт {font_path} не найден, используется стандартный")
 
         # Рисуем текст
         draw = ImageDraw.Draw(img)
@@ -586,7 +591,7 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y, font_si
 
         return img
     except Exception as e:
-        print(f"Error creating card image: {str(e)}")
+        app.logger.error(f"Ошибка при создании открытки: {str(e)}")
         raise
 
 
