@@ -1,10 +1,9 @@
-TARGET = mail_inet
+TARGET = mail_redis
 SRC = $(TARGET).c  
-CFLAGS = -I/usr/include/postgresql
-LIBS = -lsodium -lpq -pthread
+LIBS = -lhiredis -lsodium -lpthread
 
 $(TARGET): $(SRC)
-	gcc -o $(TARGET) $(SRC) $(CFLAGS) $(LIBS)
+	gcc -o $(TARGET) $(SRC) $(LIBS)
 
 clean:
 	rm -f $(TARGET)
