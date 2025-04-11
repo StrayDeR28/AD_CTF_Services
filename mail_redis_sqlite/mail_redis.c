@@ -53,7 +53,7 @@ int is_valid_ascii_or_cyrillic(const char *str) {
     return 1;
 }
 
-// перевод строки в hex
+// перевод строки из hex
 int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
     size_t hex_len = strlen(hex);
     if (hex_len > 0 && hex[hex_len - 1] == '\n') hex_len--;
@@ -87,7 +87,11 @@ int query_db(const char *sql_template, const char *params[], int param_count, ch
     if (bytes_received > 0) response[bytes_received] = '\0';
 
     close(sock);
-    return bytes_received > 0 ? 0 : -1;
+    if (bytes_received > 0)
+        return 0;
+    else
+        return -1;
+
 }
 
 // Получение последней показанной записи
@@ -110,7 +114,7 @@ void get_last_seen(const char *login, const char *ip, int *last_friend_id, int *
 // Обновление последней показанной записи
 void update_last_seen(const char *login, const char *ip, int last_friend_id, int last_postcard_id) {
     const char *sql = "INSERT OR REPLACE INTO user_last_seen (login, ip, last_friend_id, last_postcard_id) VALUES (?, ?, ?, ?)";
-    char friend_id_str[16], postcard_id_str[16];
+    char friend_id_str[8], postcard_id_str[8];
     snprintf(friend_id_str, sizeof(friend_id_str), "%d", last_friend_id);
     snprintf(postcard_id_str, sizeof(postcard_id_str), "%d", last_postcard_id);
     const char *params[] = {login, ip, friend_id_str, postcard_id_str};
@@ -134,7 +138,7 @@ void check_new_records(const char *login, const char *ip, int client_fd) {
     get_last_seen(login, ip, &last_friend_id, &last_postcard_id);
 
     char response[BUFFER_SIZE];
-    char last_friend_id_str[16], last_postcard_id_str[16];
+    char last_friend_id_str[8], last_postcard_id_str[8];
     snprintf(last_friend_id_str, sizeof(last_friend_id_str), "%d", last_friend_id);
     snprintf(last_postcard_id_str, sizeof(last_postcard_id_str), "%d", last_postcard_id);
 
@@ -149,7 +153,7 @@ void check_new_records(const char *login, const char *ip, int client_fd) {
             sscanf(line, "%d|%s", &id, friend1_login);
             send_response(client_fd, "Пришел запрос в друзья от %s\n", friend1_login);
             if (id > last_friend_id) last_friend_id = id;
-            line = strtok(NULL, "\n");
+            line = strtok(NULL, "\n");//переход на следующую строку
         }
     }
 
@@ -171,6 +175,12 @@ void check_new_records(const char *login, const char *ip, int client_fd) {
     update_last_seen(login, ip, last_friend_id, last_postcard_id);
 }
 
+void cleanup(redisContext *redis, int client_fd) {
+    redisFree(redis);
+    close(client_fd);
+    pthread_exit(NULL);
+}
+
 void *handle_client(void *arg) {
     int client_fd = (int)(intptr_t)arg;
 
@@ -185,9 +195,7 @@ void *handle_client(void *arg) {
     socklen_t client_len = sizeof(client_addr);
     if (getpeername(client_fd, (struct sockaddr*)&client_addr, &client_len) < 0) {
         send_response(client_fd, "Ошибка получения IP клиента\n");
-        redisFree(redis);
-        close(client_fd);
-        pthread_exit(NULL);
+        cleanup(redis, client_fd);
     }
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, ip, INET_ADDRSTRLEN);
@@ -197,9 +205,7 @@ void *handle_client(void *arg) {
     int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
     if (bytes_received <= 0) {
         send_response(client_fd, "Ошибка ввода токена\n");
-        redisFree(redis);
-        close(client_fd);
-        pthread_exit(NULL);
+        cleanup(redis, client_fd);
     }
     if (buffer[bytes_received - 1] == '\n') buffer[bytes_received - 1] = '\0';
 
@@ -208,9 +214,7 @@ void *handle_client(void *arg) {
         char c = buffer[i];
         if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
             send_response(client_fd, "Токен должен содержать только HEX-символы\n");
-            redisFree(redis);
-            close(client_fd);
-            pthread_exit(NULL);
+            cleanup(redis, client_fd);
         }
     }
 
@@ -218,20 +222,16 @@ void *handle_client(void *arg) {
     int encrypted_len = hex_to_bin(buffer, encrypted, MAX_LEN);
     if (encrypted_len < 0) {
         send_response(client_fd, "Некорректный токен\n");
-        redisFree(redis);
-        close(client_fd);
-        pthread_exit(NULL);
+        cleanup(redis, client_fd);
     }
 
-    uint8_t login[MAX_LEN] = {0};
+    uint8_t login[MAX_LEN + 1] = {0};
     decrypt(encrypted, login, encrypted_len, key);
     login[encrypted_len] = '\0';
 
     if (!is_valid_ascii_or_cyrillic((char*)login)) {
         send_response(client_fd, "Токен привёл к некорректному логину\n");
-        redisFree(redis);
-        close(client_fd);
-        pthread_exit(NULL);
+        cleanup(redis, client_fd);
     }
 
     send_response(client_fd, "Логин: %s, IP: %s\n", login, ip);
@@ -261,20 +261,14 @@ void *handle_client(void *arg) {
         // клиент отключился
         char buf[1];
         if (recv(client_fd, buf, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
-            redisFree(redis);
-            close(client_fd);
-            pthread_exit(NULL);
+            cleanup(redis, client_fd);
         }
     }
-
-    redisFree(redis);
-    close(client_fd);
-    pthread_exit(NULL);
 }
 
 int main() {
-    signal(SIGPIPE, SIG_IGN);
-    if (sodium_init() < 0) {
+    signal(SIGPIPE, SIG_IGN);//ctrl+c от клиента, а мы не падаем
+    if (sodium_init() < 0) {// дабы избежать краха перед использованием крипты
         printf("Ошибка инициализации Libsodium\n");
         return 1;
     }
@@ -285,17 +279,19 @@ int main() {
         return 1;
     }
 
+    //подключение к сервису
     struct sockaddr_in address = {0}; //localhost
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(31337);    //port
 
+    //Привязываем сокет к адресу и порту
     if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
         perror("Ошибка bind");
         return 1;
     }
 
-    if (listen(server_fd, 50) < 0) {
+    if (listen(server_fd, 100) < 0) {
         perror("Ошибка listen");
         return 1;
     }
@@ -303,12 +299,14 @@ int main() {
     while (1) {
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
+        //ожидаем нового подключения
         int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
         if (client_fd < 0) {
             perror("Ошибка accept");
             continue;
         }
 
+        //чтобы данные отправлялись сразу, иначе могут где-то теряться
         int flag = 1;
         if (setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
             perror("Ошибка setsockopt TCP_NODELAY");
