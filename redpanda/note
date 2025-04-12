@@ -9,3 +9,4 @@ docker ps
 
 Остановка: Используйте 
 docker compose down
++
