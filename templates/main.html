@@ -1,5 +1,4 @@
 ﻿{% extends "base.html" %}
-
 {% block title %}Главная страница{% endblock %}
 
 {% block content %}
@@ -40,8 +39,11 @@
         <!-- Центральная часть - превью и форма -->
         <div class="card-center">
             <div class="card-preview">
-                <div id="card-preview-container">
-                    <img id="card-preview" src="" alt="Предпросмотр открытки">
+                <div class="card-preview-container" style="position: relative;">
+                    <img class="card-preview-bg"
+                        src="{{ url_for('static', filename='images/backgrounds/' + backgrounds[0]) }}"
+                        alt="Фон открытки" style="width: 100%; height: 100%; object-fit: contain;">
+                    <!-- Текст будет добавлен через JavaScript -->
                 </div>
             </div>
 
@@ -81,7 +83,6 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="button" id="preview-btn" class="btn">Предпросмотр</button>
                         <button type="button" id="send-btn" class="btn">Отправить</button>
                     </div>
                 </form>
@@ -112,48 +113,50 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Обработка предпросмотра
-        document.getElementById('preview-btn').addEventListener('click', function() {
-            const formData = new FormData(document.getElementById('card-form'));
-
-            fetch('{{ url_for("generate_card") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('card-preview').src = data.image;
-            });
+    document.addEventListener('DOMContentLoaded', function () {
+        // Обновление фона
+        document.getElementById('background').addEventListener('change', function () {
+            document.querySelector('.card-preview-bg').src = `/static/images/backgrounds/${this.value}`;
         });
 
-        // Обработка отправки
-        document.getElementById('send-btn').addEventListener('click', function() {
-            const formData = new FormData(document.getElementById('card-form'));
+        // Обработка отправки формы
+        document.getElementById('send-btn').addEventListener('click', async function () {
+            const form = document.getElementById('card-form');
+            const formData = new FormData(form);
+            const sendBtn = this;
 
-            fetch('{{ url_for("send_postcard") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.reload();
+            // Добавляем дополнительные данные
+            formData.set('pos_x', document.getElementById('pos_x').value);
+            formData.set('pos_y', document.getElementById('pos_y').value);
+            formData.set('color', document.getElementById('color').value);
+            formData.set('font', document.getElementById('font').value);
+
+            // Блокируем кнопку во время отправки
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Отправка...';
+
+            try {
+                const response = await fetch('{{ url_for("send_postcard") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка сервера');
                 }
-            });
-        });
 
-        // Обработка скачивания
-        document.getElementById('download-btn').addEventListener('click', function() {
-            const formData = new FormData(document.getElementById('card-form'));
+                // Показываем сообщение об успехе
+                // alert('Открытка успешно отправлена!');
+                form.reset(); // Очищаем форму
 
-            fetch('{{ url_for("download_card") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                window.location.href = '{{ url_for("download_file", filename="") }}' + data.filename;
-            });
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Произошла ошибка при отправке: ' + error.message);
+            } finally {
+                // Разблокируем кнопку
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Отправить';
+            }
         });
     });
 </script>

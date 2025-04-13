@@ -1,5 +1,4 @@
 ﻿{% extends "base.html" %}
-
 {% block title %}Профиль{% endblock %}
 
 {% block content %}
@@ -74,7 +73,7 @@
                     <form method="POST" action="{{ url_for('update_signature') }}">
                         <div class="form-group">
                             <input type="text" name="signature" value="{{ current_user.postcard_signature }}" required>
-                            <button type="submit" class="btn">Обновить</button>
+                            <button type="submit" class="btn" style="margin-top: 20px;">Обновить</button>
                         </div>
                     </form>
                 </div>
@@ -86,7 +85,7 @@
                 <form method="POST" action="{{ url_for('send_friend_request') }}">
                     <div class="form-group">
                         <input type="text" name="friend_login" placeholder="Введите логин друга" required>
-                        <button type="submit" class="btn">Отправить запрос</button>
+                        <button type="submit" class="btn" style="margin-top: 20px;">Отправить запрос</button>
                     </div>
                 </form>
             </div>
@@ -226,5 +225,24 @@
             });
         }
     });
+</script>
+<script>
+    function openTab(tabName) {
+        // Скрыть все вкладки
+        const tabContents = document.getElementsByClassName('tab-content');
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].classList.remove('active');
+        }
+
+        // Деактивировать все кнопки
+        const tabButtons = document.getElementsByClassName('tab-btn');
+        for (let i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].classList.remove('active');
+        }
+
+        // Показать выбранную вкладку и активировать кнопку
+        document.getElementById(tabName).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
 </script>
 {% endblock %}

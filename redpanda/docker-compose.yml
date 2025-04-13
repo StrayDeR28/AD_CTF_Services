@@ -1,0 +1,13 @@
+services:
+  redpanda:
+    build: .
+    image: redpanda-custom
+    container_name: redpanda-1
+    ports:
+      - "9092:9092"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    restart: always
+
+volumes:
+  redpanda-data:
