@@ -48,10 +48,3 @@ class Postcard(db.Model):
     __table_args__ = (
         db.Index("idx_postcards_receiver_login_id", "receiver_login", "id"),
     )
-
-
-class UserLastSeen(db.Model):
-    login = db.Column(db.String(100), db.ForeignKey("user.login"), primary_key=True)
-    ip = db.Column(db.String(15), primary_key=True)
-    last_friend_id = db.Column(db.Integer, default=0, nullable=False)
-    last_postcard_id = db.Column(db.Integer, default=0, nullable=False)

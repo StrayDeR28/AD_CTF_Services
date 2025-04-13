@@ -202,7 +202,6 @@ def friend_profile(login):
             (Friend.friend1_login == login)
             & (Friend.friend2_login == current_user.login)
         ),
-        Friend.is_approved == True,
     ).first()
 
     user = User.query.filter_by(login=login).first_or_404()
@@ -570,18 +569,27 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y, font_si
         bg_path = os.path.join(app.config["UPLOAD_FOLDER"], background)
         img = Image.open(bg_path).convert("RGBA")
 
-        # Настройки шрифта
+        FONTS_DIR = os.path.join(os.path.dirname(__file__), "static/fonts")
+
         font_map = {
-            "Arial": "arial.ttf",
-            "Times New Roman": "times.ttf",
-            "Courier New": "cour.ttf",
+            "Arial": os.path.join(
+                FONTS_DIR, "arial.ttf"
+            ),  # или LiberationSans-Regular.ttf
+            "Times New Roman": os.path.join(
+                FONTS_DIR, "times.ttf"
+            ),  # или LiberationSerif-Regular.ttf
+            "Courier New": os.path.join(
+                FONTS_DIR, "cour.ttf"
+            ),  # или LiberationMono-Regular.ttf
         }
 
+        # Загрузка шрифта
+        font_path = font_map.get(font, font_map["Arial"])  # По умолчанию Arial
+
         try:
-            font_path = font_map.get(font, "arial.ttf")
             font_obj = ImageFont.truetype(font_path, font_size)
         except OSError:
-            # Если шрифт не найден, используем стандартный
+            # Если шрифт не найден, используем встроенный
             font_obj = ImageFont.load_default()
             app.logger.warning(f"Шрифт {font_path} не найден, используется стандартный")
 
