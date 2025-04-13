@@ -10,98 +10,89 @@ document.addEventListener('DOMContentLoaded', function () {
     const sendBtn = document.getElementById('send-btn');
     const backgroundSelect = document.getElementById('background');
 
-    // Создаем текстовый элемент с фиксированным размером 24px
+    //      
     textElement.className = 'draggable-text';
-    textElement.textContent = '';
-    textElement.style.fontSize = '24px'; // Фиксированный размер
+    textElement.style.position = 'absolute';
+    textElement.textContent = frontTextInput.value || '';
+    textElement.style.fontSize = '24px';
+    textElement.style.color = colorInput.value;
+    textElement.style.fontFamily = fontSelect.value;
+    textElement.style.left = posXInput.value + 'px';
+    textElement.style.top = posYInput.value + 'px';
+    textElement.style.pointerEvents = 'auto'; //  
+    textElement.style.cursor = 'move'; //   
     container.appendChild(textElement);
 
-    // Инициализация
-    updateTextContent();
-    updateTextStyle();
-    updateTextPosition();
+    //  
+    frontTextInput.addEventListener('input', function () {
+        textElement.textContent = this.value || '';
+    });
 
-    // Обработчики событий
-    frontTextInput.addEventListener('input', updateTextContent);
-    colorInput.addEventListener('input', updateTextStyle);
-    fontSelect.addEventListener('change', updateTextStyle);
-    posXInput.addEventListener('input', updatePositionFromInputs);
-    posYInput.addEventListener('input', updatePositionFromInputs);
-    backgroundSelect.addEventListener('change', updateBackground);
-    sendBtn.addEventListener('click', sendPostcard);
+    colorInput.addEventListener('input', function () {
+        textElement.style.color = this.value;
+    });
 
-    textElement.addEventListener('mousedown', startDrag);
+    fontSelect.addEventListener('change', function () {
+        textElement.style.fontFamily = this.value;
+    });
 
-    function updateTextContent() {
-        textElement.textContent = frontTextInput.value || '';
-    }
+    posXInput.addEventListener('input', function () {
+        textElement.style.left = this.value + 'px';
+    });
 
-    function updateTextStyle() {
-        textElement.style.color = colorInput.value;
-        textElement.style.fontFamily = fontSelect.value;
-        // Размер шрифта больше не изменяется
-    }
+    posYInput.addEventListener('input', function () {
+        textElement.style.top = this.value + 'px';
+    });
 
-    function updatePositionFromInputs() {
-        updateTextPosition();
-    }
-
-    function updateTextPosition() {
-        const bgRect = bgImage.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        // Рассчитываем относительные координаты
-        const relX = parseInt(posXInput.value) || 0;
-        const relY = parseInt(posYInput.value) || 0;
-
-        // Позиционируем текст
-        textElement.style.left = `${relX}px`;
-        textElement.style.top = `${relY}px`;
-    }
-
-    function startDrag(e) {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const startLeft = parseInt(textElement.style.left) || 0;
-        const startTop = parseInt(textElement.style.top) || 0;
-
-        function moveText(e) {
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-
-            const newX = startLeft + dx;
-            const newY = startTop + dy;
-
-            textElement.style.left = `${newX}px`;
-            textElement.style.top = `${newY}px`;
-
-            posXInput.value = newX;
-            posYInput.value = newY;
-        }
-
-        function stopDrag() {
-            document.removeEventListener('mousemove', moveText);
-            document.removeEventListener('mouseup', stopDrag);
-        }
-
-        document.addEventListener('mousemove', moveText);
-        document.addEventListener('mouseup', stopDrag);
-    }
-
-    function updateBackground() {
+    backgroundSelect.addEventListener('change', function () {
         bgImage.src = `/static/images/backgrounds/${this.value}`;
-    }
+    });
 
-    function sendPostcard() {
+    // Drag and drop 
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    textElement.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        const rect = textElement.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        textElement.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!isDragging) return;
+
+        const containerRect = container.getBoundingClientRect();
+        let x = e.clientX - containerRect.left - offsetX;
+        let y = e.clientY - containerRect.top - offsetY;
+
+        //     
+        x = Math.max(0, Math.min(x, containerRect.width - textElement.offsetWidth));
+        y = Math.max(0, Math.min(y, containerRect.height - textElement.offsetHeight));
+
+        textElement.style.left = x + 'px';
+        textElement.style.top = y + 'px';
+
+        //     
+        posXInput.value = Math.round(x);
+        posYInput.value = Math.round(y);
+    });
+
+    document.addEventListener('mouseup', function () {
+        isDragging = false;
+        textElement.style.cursor = 'move';
+    });
+
+    //   
+    sendBtn.addEventListener('click', function () {
         const form = document.getElementById('card-form');
-        // Добавляем фиксированный размер шрифта в форму перед отправкой
         const fontSizeInput = document.createElement('input');
         fontSizeInput.type = 'hidden';
         fontSizeInput.name = 'font_size';
         fontSizeInput.value = '24';
         form.appendChild(fontSizeInput);
-
         form.submit();
-    }
+    });
 });
