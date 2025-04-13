@@ -90,20 +90,20 @@ def ImgEncrypt(PathImg, message):
 
 
 def ImgDecrypt(PathImg, PathMsg, _len):
-    msg = open(PathMsg, "w")         # îòêðûâàåì ôàéë äëÿ çàïèñè
-    img = Image.open(PathImg)        # îòêðûâàåì èçîáðàæåíèå
-    width = img.size[0]              # îïðåäåëÿåì øèðèíó èçîáðàæåíèÿ
-    height = img.size[1]             # îïðåäåëÿåì âûñîòó èçîáðàæåíèÿ
-    _h = int(height / 2);            # ïîçèöèÿ ïîäïèñè ïî âûñîòå
-    _w = int(width / 2);             # ïîçèöèÿ ïîäïèñè ïî øèðèíå
-    pix = img.load()                 # âûãðóæàåì çíà÷åíèÿ ïèêñåëåé
+    msg = open(PathMsg, "w")         # открываем файл для записи
+    img = Image.open(PathImg)        # открываем изображение
+    width = img.size[0]              # определяем ширину изображения
+    height = img.size[1]             # определяем высоту изображения
+    _h = int(height / 2);            # позиция подписи по высоте
+    _w = int(width / 2);             # позиция подписи по ширине
+    pix = img.load()                 # выгружаем значения пикселей
 
     count = 0
     lenBits = _len * 8
     decryptBinMsg = ""
     
 
-    # ðàñøèôðîâêà ñîîáùåíèÿ
+    # расшифровка сообщения
     while (_h < height):
         for i in range(_w, width):
             b = pix[i, _h][1]
@@ -120,7 +120,7 @@ def ImgDecrypt(PathImg, PathMsg, _len):
                         decryptBinMsg = decryptBinMsg + "b"
                     count = count + 1
 
-            # åñëè çàïèñàëè âñå áèòû èç ñòðîêè ïèêñåëåé
+            # если записали все биты из строки пикселей
             else:
                 i = width
                 break
@@ -142,8 +142,8 @@ def ImgDecrypt(PathImg, PathMsg, _len):
     #print("")
     msg.write(decryptMsg)
 
-    img.close()                      # çàêðûâàåì èçîáðàæåíèå
-    msg.close()                      # çàêðûâàåì ôàéë c ñèãíàòóðîé
+    img.close()                      # закрываем изображение
+    msg.close()                      # закрываем файл c сигнатурой
 
 
 
@@ -151,7 +151,7 @@ def ImgDecrypt(PathImg, PathMsg, _len):
 
 
 #signature = input("Write your signature: ")
-signature = "TEAM005_ABCDEFGHIGKLMNOPQRSTUVWXYZ1234567890qwertyuiop[]"         # ïîäïèñü äëÿ øèôðîâàíèÿ
+signature = "TEAM005_ABCDEFGHIGKLMNOPQRSTUVWXYZ1234567890qwertyuiop[]"         # подпись для шифрования
 #print("signature:", signature)
 ImgEncrypt("C:/Channel/img.png", signature)
 ImgDecrypt("C:/Channel/encryptImg.png", "C:/Channel/decryptMsg.txt", len(signature))
