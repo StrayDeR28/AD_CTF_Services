@@ -2,42 +2,41 @@ import numpy
 from PIL import Image, ImageDraw
 
 def ImgEncrypt(PathImg, message):
-    lenBits = (len(message) * 8) + 1   # определяем длину
+    lenBits = (len(message) * 8) + 1   # РѕРїСЂРµРґРµР»СЏРµРј РґР»РёРЅСѓ
 
-    orig_img = Image.open(PathImg)     # открываем изображение
-    img = orig_img.copy()              # копируем изображение, чтобы не испортить оригинал
-    orig_img.close()                   # закрываем оригинал и работаем с копией
+    orig_img = Image.open(PathImg)     # РѕС‚РєСЂС‹РІР°РµРј РёР·РѕР±СЂР°Р¶РµРЅРёРµ
+    img = orig_img.copy()              # РєРѕРїРёСЂСѓРµРј РёР·РѕР±СЂР°Р¶РµРЅРёРµ, С‡С‚РѕР±С‹ РЅРµ РёСЃРїРѕСЂС‚РёС‚СЊ РѕСЂРёРіРёРЅР°Р»
+    orig_img.close()                   # Р·Р°РєСЂС‹РІР°РµРј РѕСЂРёРіРёРЅР°Р» Рё СЂР°Р±РѕС‚Р°РµРј СЃ РєРѕРїРёРµР№
 
-    width = img.size[0]                # определяем ширину изображения
-    height = img.size[1]               # определяем высоту изображения
-    _h = int(height / 2);              # позиция подписи по высоте
-    _w = int(width / 2);               # позиция подписи по ширине
+    width = img.size[0]                # РѕРїСЂРµРґРµР»СЏРµРј С€РёСЂРёРЅСѓ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ
+    height = img.size[1]               # РѕРїСЂРµРґРµР»СЏРµРј РІС‹СЃРѕС‚Сѓ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ
+    _h = int(height / 2);              # РїРѕР·РёС†РёСЏ РїРѕРґРїРёСЃРё РїРѕ РІС‹СЃРѕС‚Рµ
+    _w = int(width / 2);               # РїРѕР·РёС†РёСЏ РїРѕРґРїРёСЃРё РїРѕ С€РёСЂРёРЅРµ
 
-    pix = img.load()                   # выгружаем значения пикселей
+    pix = img.load()                   # РІС‹РіСЂСѓР¶Р°РµРј Р·РЅР°С‡РµРЅРёСЏ РїРёРєСЃРµР»РµР№
     
     binMsg = bin(int.from_bytes(message.encode(), "big"))
     #print("binMsg:", binMsg)
-    #quit()
 
     count = 2;
     a0 = pix[_w, _h][0]   #red
     b0 = pix[_w, _h][1]   #green
     c0 = pix[_w, _h][2]   #blue
-    # если в бите стоит 1
+    # РµСЃР»Рё РІ Р±РёС‚Рµ СЃС‚РѕРёС‚ 1
     if (binMsg[0] == "1"):
-        # если green - чётное (а нужно сделать нечётное)
+        # РµСЃР»Рё green - С‡С‘С‚РЅРѕРµ (Р° РЅСѓР¶РЅРѕ СЃРґРµР»Р°С‚СЊ РЅРµС‡С‘С‚РЅРѕРµ)
         if ((b0 % 2) == 0):
             # [0;254] --> [1;255]
             pix[_w, _h] = (a0, b0 + 1, c0)
 
-    # если в бите стоит 0
+    # РµСЃР»Рё РІ Р±РёС‚Рµ СЃС‚РѕРёС‚ 0
     else:
-        # если green - нечётное (а нужно сделать чётное)
+        # РµСЃР»Рё green - РЅРµС‡С‘С‚РЅРѕРµ (Р° РЅСѓР¶РЅРѕ СЃРґРµР»Р°С‚СЊ С‡С‘С‚РЅРѕРµ)
         if ((b0 % 2) == 1):
-            # если green == 255
+            # РµСЃР»Рё green == 255
             if (b0 == 255):
                 pix[_w, _h] = (a0, 254, c0)
-            # если green != 255 ([1;253] --> [2;254])
+            # РµСЃР»Рё green != 255 ([1;253] --> [2;254])
             else:
                 pix[_w, _h] = (a0, b0 + 1, c0)
 
@@ -51,29 +50,29 @@ def ImgEncrypt(PathImg, message):
             c = pix[i, _h][2]   #blue
 
             if (count < lenBits):
-                # если в бите стоит 1
+                # РµСЃР»Рё РІ Р±РёС‚Рµ СЃС‚РѕРёС‚ 1
                 if (binMsg[count] == "1"):
                     count = count + 1
 
-                    # если green - чётное (а нужно сделать нечётное)
+                    # РµСЃР»Рё green - С‡С‘С‚РЅРѕРµ (Р° РЅСѓР¶РЅРѕ СЃРґРµР»Р°С‚СЊ РЅРµС‡С‘С‚РЅРѕРµ)
                     if ((b % 2) == 0):
                         # [0;254] --> [1;255]
                         pix[i, _h] = (a, b + 1, c)
 
-                # если в бите стоит 0
+                # РµСЃР»Рё РІ Р±РёС‚Рµ СЃС‚РѕРёС‚ 0
                 else:
                     count = count + 1
 
-                    # если green - нечётное (а нужно сделать чётное)
+                    # РµСЃР»Рё green - РЅРµС‡С‘С‚РЅРѕРµ (Р° РЅСѓР¶РЅРѕ СЃРґРµР»Р°С‚СЊ С‡С‘С‚РЅРѕРµ)
                     if ((b % 2) == 1):
-                        # если green == 255
+                        # РµСЃР»Рё green == 255
                         if (b == 255):
                             pix[i, _h] = (a, 254, c)
-                        # если green != 255 ([1;253] --> [2;254])
+                        # РµСЃР»Рё green != 255 ([1;253] --> [2;254])
                         else:
                             pix[i, _h] = (a, b + 1, c)
 
-            # если записали все символы
+            # РµСЃР»Рё Р·Р°РїРёСЃР°Р»Рё РІСЃРµ СЃРёРјРІРѕР»С‹
             else:
                 i = width
                 break
@@ -91,20 +90,20 @@ def ImgEncrypt(PathImg, message):
 
 
 def ImgDecrypt(PathImg, PathMsg, _len):
-    msg = open(PathMsg, "w")         # открываем файл для записи
-    img = Image.open(PathImg)        # открываем изображение
-    width = img.size[0]              # определяем ширину изображения
-    height = img.size[1]             # определяем высоту изображения
-    _h = int(height / 2);            # позиция подписи по высоте
-    _w = int(width / 2);             # позиция подписи по ширине
-    pix = img.load()                 # выгружаем значения пикселей
+    msg = open(PathMsg, "w")         # Г®ГІГЄГ°Г»ГўГ ГҐГ¬ ГґГ Г©Г« Г¤Г«Гї Г§Г ГЇГЁГ±ГЁ
+    img = Image.open(PathImg)        # Г®ГІГЄГ°Г»ГўГ ГҐГ¬ ГЁГ§Г®ГЎГ°Г Г¦ГҐГ­ГЁГҐ
+    width = img.size[0]              # Г®ГЇГ°ГҐГ¤ГҐГ«ГїГҐГ¬ ГёГЁГ°ГЁГ­Гі ГЁГ§Г®ГЎГ°Г Г¦ГҐГ­ГЁГї
+    height = img.size[1]             # Г®ГЇГ°ГҐГ¤ГҐГ«ГїГҐГ¬ ГўГ»Г±Г®ГІГі ГЁГ§Г®ГЎГ°Г Г¦ГҐГ­ГЁГї
+    _h = int(height / 2);            # ГЇГ®Г§ГЁГ¶ГЁГї ГЇГ®Г¤ГЇГЁГ±ГЁ ГЇГ® ГўГ»Г±Г®ГІГҐ
+    _w = int(width / 2);             # ГЇГ®Г§ГЁГ¶ГЁГї ГЇГ®Г¤ГЇГЁГ±ГЁ ГЇГ® ГёГЁГ°ГЁГ­ГҐ
+    pix = img.load()                 # ГўГ»ГЈГ°ГіГ¦Г ГҐГ¬ Г§Г­Г Г·ГҐГ­ГЁГї ГЇГЁГЄГ±ГҐГ«ГҐГ©
 
     count = 0
     lenBits = _len * 8
     decryptBinMsg = ""
     
 
-    # расшифровка сообщения
+    # Г°Г Г±ГёГЁГґГ°Г®ГўГЄГ  Г±Г®Г®ГЎГ№ГҐГ­ГЁГї
     while (_h < height):
         for i in range(_w, width):
             b = pix[i, _h][1]
@@ -121,7 +120,7 @@ def ImgDecrypt(PathImg, PathMsg, _len):
                         decryptBinMsg = decryptBinMsg + "b"
                     count = count + 1
 
-            # если записали все биты из строки пикселей
+            # ГҐГ±Г«ГЁ Г§Г ГЇГЁГ±Г Г«ГЁ ГўГ±ГҐ ГЎГЁГІГ» ГЁГ§ Г±ГІГ°Г®ГЄГЁ ГЇГЁГЄГ±ГҐГ«ГҐГ©
             else:
                 i = width
                 break
@@ -143,8 +142,8 @@ def ImgDecrypt(PathImg, PathMsg, _len):
     #print("")
     msg.write(decryptMsg)
 
-    img.close()                      # закрываем изображение
-    msg.close()                      # закрываем файл c сигнатурой
+    img.close()                      # Г§Г ГЄГ°Г»ГўГ ГҐГ¬ ГЁГ§Г®ГЎГ°Г Г¦ГҐГ­ГЁГҐ
+    msg.close()                      # Г§Г ГЄГ°Г»ГўГ ГҐГ¬ ГґГ Г©Г« c Г±ГЁГЈГ­Г ГІГіГ°Г®Г©
 
 
 
@@ -152,7 +151,7 @@ def ImgDecrypt(PathImg, PathMsg, _len):
 
 
 #signature = input("Write your signature: ")
-signature = "TEAM005_ABCDEFGHIGKLMNOPQRSTUVWXYZ1234567890qwertyuiop[]"         # подпись для шифрования
+signature = "TEAM005_ABCDEFGHIGKLMNOPQRSTUVWXYZ1234567890qwertyuiop[]"         # ГЇГ®Г¤ГЇГЁГ±Гј Г¤Г«Гї ГёГЁГґГ°Г®ГўГ Г­ГЁГї
 #print("signature:", signature)
 ImgEncrypt("C:/Channel/img.png", signature)
 ImgDecrypt("C:/Channel/encryptImg.png", "C:/Channel/decryptMsg.txt", len(signature))
