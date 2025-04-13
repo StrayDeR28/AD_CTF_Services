@@ -53,6 +53,7 @@ def send_messages(login, messages):
 
 # Пример использования
 def main():
+    # nc localhost 31337
     # Пример логина пользователя AD59577F
     login = "Ivan"
     
