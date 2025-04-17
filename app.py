@@ -29,10 +29,14 @@ from Crypto.Cipher import ChaCha20
 import time
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
+from datetime import datetime
+from encr import ImgEncrypt
 
 BROKER = "localhost:9092"
+POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
 app = Flask(__name__)
+app.config["POSTCARDS_FOLDER"] = POSTCARDS_FOLDER
 app.config["SECRET_KEY"] = "your-secret-key-here"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///postcards.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -366,99 +370,101 @@ def remove_friend(friend_login):
 @app.route("/send_postcard", methods=["POST"])
 @login_required
 def send_postcard():
-    receiver_login = request.form.get("receiver")
-    front_text = request.form.get("front_text")
-    message = request.form.get("message")
-    is_private = True if request.form.get("is_private") else False
-    background = request.form.get("background")
-    font = request.form.get("font", "Arial")
-    font_size = int(request.form.get("font_size", 24))
-    color = request.form.get("color", "#000000")
-    pos_x = int(request.form.get("pos_x", 50))
-    pos_y = int(request.form.get("pos_y", 50))
+    try:
+        # Получаем данные
+        receiver_login = request.form.get("receiver")
+        front_text = request.form.get("front_text")
+        message = request.form.get("message")
+        is_private = request.form.get("is_private") == "on"
+        background = request.form.get("background")
 
-    if not receiver_login or not front_text or not background:
-        flash("Заполните все обязательные поля")
+        # Валидация
+        if not all([receiver_login, front_text, background]):
+            flash("Заполните все обязательные поля")
+            return redirect(url_for("main"))
+
+        # Проверка друга
+        if not is_friend(current_user.login, receiver_login):
+            flash("Можно отправлять только друзьям")
+            return redirect(url_for("main"))
+
+        # Создаем уникальное имя файла
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = f"postcard_{current_user.login}_{timestamp}.png"
+        filepath = os.path.join(POSTCARDS_FOLDER, filename)
+
+        # Создаем и сохраняем изображение
+        img = create_card_image(
+            front_text,
+            background,
+            request.form.get("font", "Arial"),
+            request.form.get("color", "#000000"),
+            int(request.form.get("pos_x", 50)),
+            int(request.form.get("pos_y", 50)),
+            int(request.form.get("font_size", 24)),
+        )
+
+        img = ImgEncrypt(img, current_user.postcard_signature)
+
+        img.save(filepath, "PNG")
+        app.logger.info(f"Открытка сохранена в {filepath}")
+
+        # Проверяем что файл создан
+        if not os.path.exists(filepath):
+            raise Exception("Файл открытки не создан")
+
+        # Создаем запись в БД
+        new_postcard = Postcard(
+            sender_login=current_user.login,
+            receiver_login=receiver_login,
+            text=message,
+            is_private=is_private,
+            image_path=os.path.join("postcards", filename),
+            created_at=datetime.now(),
+        )
+
+        db.session.add(new_postcard)
+        db.session.commit()
+        app.logger.info(f"Запись создана с ID {new_postcard.id}")
+
+        # Отправка уведомления
+        send_messages(receiver_login, f"Новая открытка от {current_user.login}")
+
+        flash("Открытка успешно отправлена!")
         return redirect(url_for("main"))
 
-    # Проверяем, есть ли получатель в друзьях
-    if not is_friend(current_user.login, receiver_login):
-        flash("Вы можете отправлять открытки только друзьям")
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Ошибка: {str(e)}", exc_info=True)
+        flash(f"Ошибка: {str(e)}")
         return redirect(url_for("main"))
-
-    # Создаем изображение открытки
-    img = create_card_image(
-        front_text, background, font, color, pos_x, pos_y, font_size
-    )
-
-    # Конвертируем изображение в бинарные данные
-    img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format="PNG")
-    img_byte_arr = img_byte_arr.getvalue()
-
-    # Создаем открытку с изображением
-    new_postcard = Postcard(
-        sender_login=current_user.login,
-        receiver_login=receiver_login,
-        text=message,
-        is_private=is_private,
-        image_data=img_byte_arr,
-    )
-
-    db.session.add(new_postcard)
-    db.session.commit()
-
-    msg = f"Пришла открытка от: {current_user.login}. Сообщение: {message}"
-    send_messages(receiver_login, msg)
-
-    flash("Открытка отправлена")
-    return redirect(url_for("main"))
 
 
 # Просмотр открытки
 @app.route("/view_card/<int:card_id>")
 @login_required
 def view_card(card_id):
-    postcard = Postcard.query.get(card_id)
+    postcard = Postcard.query.get_or_404(card_id)
+    sender = User.query.filter_by(login=postcard.sender_login).first_or_404()
 
-    if not postcard:
-        flash("Открытка не найдена")
-        return redirect(url_for("main"))
-
-    # Получаем информацию об отправителе
-    sender = User.query.filter_by(login=postcard.sender_login).first()
-
-    return render_template(
-        "view_card.html",
-        postcard=postcard,
-        sender=sender,
-        show_private=(
-            current_user.login == postcard.sender_login
-            or current_user.login == postcard.receiver_login
-        ),
+    # Проверка прав доступа
+    show_private = (
+        current_user.login == postcard.sender_login
+        or current_user.login == postcard.receiver_login
     )
 
+    if postcard.is_private and not show_private:
+        abort(403)
 
-# Генерация изображения открытки
-@app.route("/generate_card", methods=["POST"])
-@login_required
-def generate_card():
-    front_text = request.form.get("front_text")
-    background = request.form.get("background")
-    font = request.form.get("font", "Arial")
-    color = request.form.get("color", "#000000")
-    pos_x = int(request.form.get("pos_x", 50))
-    pos_y = int(request.form.get("pos_y", 50))
+    # Проверка существования файла
+    if not os.path.exists(os.path.join(app.static_folder, postcard.image_path)):
+        app.logger.error(f"Файл открытки не найден: {postcard.image_path}")
+        flash("Файл открытки повреждён или удалён")
+        return redirect(url_for("main"))
 
-    # Создаем изображение
-    img = create_card_image(front_text, background, font, color, pos_x, pos_y)
-
-    # Конвертируем в base64 для отображения в браузере
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-
-    return jsonify({"image": f"data:image/png;base64,{img_str}"})
+    return render_template(
+        "view_card.html", postcard=postcard, sender=sender, show_private=show_private
+    )
 
 
 @app.route("/download_card/<int:card_id>")
@@ -466,7 +472,7 @@ def generate_card():
 def download_card(card_id):
     postcard = Postcard.query.get_or_404(card_id)
 
-    # Проверяем, что пользователь имеет доступ к открытке
+    # Проверка прав доступа
     if (
         current_user.login != postcard.sender_login
         and current_user.login != postcard.receiver_login
@@ -474,20 +480,16 @@ def download_card(card_id):
     ):
         abort(403)
 
-    # Создаем временный файл
+    filepath = os.path.join(app.static_folder, postcard.image_path)
+    if not os.path.exists(filepath):
+        abort(404)
+
     filename = f"postcard_{postcard.id}.png"
-    filepath = os.path.join("static", "temp", filename)
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-
-    # Сохраняем изображение
-    with open(filepath, "wb") as f:
-        f.write(postcard.image_data)
-
     return send_from_directory(
-        os.path.join("static", "temp"),
-        filename,
+        os.path.dirname(filepath),
+        os.path.basename(filepath),
         as_attachment=True,
-        mimetype="image/png",
+        download_name=filename,
     )
 
 
@@ -646,7 +648,11 @@ def get_backgrounds():
 def create_card_image(front_text, background, font, color, pos_x, pos_y, font_size=24):
     try:
         # Загрузка фона
+        app.logger.debug(f"Создание открытки с текстом: {front_text}")
         bg_path = os.path.join(app.config["UPLOAD_FOLDER"], background)
+        if not os.path.exists(bg_path):
+            raise FileNotFoundError(f"Фон {bg_path} не найден")
+
         img = Image.open(bg_path).convert("RGBA")
 
         FONTS_DIR = os.path.join(os.path.dirname(__file__), "static/fonts")
@@ -677,98 +683,15 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y, font_si
         draw = ImageDraw.Draw(img)
         draw.text((int(pos_x), int(pos_y)), front_text, fill=color, font=font_obj)
 
+        # img = add_signature(img, current_user.postcard_signature)
+
         return img
     except Exception as e:
         app.logger.error(f"Ошибка при создании открытки: {str(e)}")
         raise
 
 
-def add_signature(PathImg, message):
-    lenBits = (len(message) * 8) + 1  # определяем длину
-
-    orig_img = Image.open(PathImg)  # открываем изображение
-    img = orig_img.copy()  # копируем изображение, чтобы не испортить оригинал
-    orig_img.close()  # закрываем оригинал и работаем с копией
-
-    width = img.size[0]  # определяем ширину изображения
-    height = img.size[1]  # определяем высоту изображения
-    _h = int(height / 2)
-    # позиция подписи по высоте
-    _w = int(width / 2)
-    # позиция подписи по ширине
-
-    pix = img.load()  # выгружаем значения пикселей
-
-    binMsg = bin(int.from_bytes(message.encode(), "big"))
-    # print("binMsg:", binMsg)
-
-    count = 2
-    a0 = pix[_w, _h][0]  # red
-    b0 = pix[_w, _h][1]  # green
-    c0 = pix[_w, _h][2]  # blue
-    # если в бите стоит 1
-    if binMsg[0] == "1":
-        # если green - чётное (а нужно сделать нечётное)
-        if (b0 % 2) == 0:
-            # [0;254] --> [1;255]
-            pix[_w, _h] = (a0, b0 + 1, c0)
-
-    # если в бите стоит 0
-    else:
-        # если green - нечётное (а нужно сделать чётное)
-        if (b0 % 2) == 1:
-            # если green == 255
-            if b0 == 255:
-                pix[_w, _h] = (a0, 254, c0)
-            # если green != 255 ([1;253] --> [2;254])
-            else:
-                pix[_w, _h] = (a0, b0 + 1, c0)
-
-    _w = _w + 1
-    while _h < height:
-        for i in range(_w, width):
-            a = pix[i, _h][0]  # red
-            b = pix[i, _h][1]  # green
-            c = pix[i, _h][2]  # blue
-
-            if count < lenBits:
-                # если в бите стоит 1
-                if binMsg[count] == "1":
-                    count = count + 1
-
-                    # если green - чётное (а нужно сделать нечётное)
-                    if (b % 2) == 0:
-                        # [0;254] --> [1;255]
-                        pix[i, _h] = (a, b + 1, c)
-
-                # если в бите стоит 0
-                else:
-                    count = count + 1
-
-                    # если green - нечётное (а нужно сделать чётное)
-                    if (b % 2) == 1:
-                        # если green == 255
-                        if b == 255:
-                            pix[i, _h] = (a, 254, c)
-                        # если green != 255 ([1;253] --> [2;254])
-                        else:
-                            pix[i, _h] = (a, b + 1, c)
-
-            # если записали все символы
-            else:
-                i = width
-                break
-
-        if count < lenBits:
-            _h = _h + 1
-            _w = 0
-        else:
-            _h = height
-            break
-
-    # img.save("C:/Channel/encryptImg.png")
-    # # img.show()
-    # img.close()
+def add_signature(img, message):
     return img
 
 
