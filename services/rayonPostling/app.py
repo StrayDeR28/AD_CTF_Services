@@ -7,11 +7,9 @@ from flask import (
     url_for,
     flash,
     send_from_directory,
-    jsonify,
 )
 from flask_login import (
     LoginManager,
-    UserMixin,
     login_user,
     login_required,
     logout_user,
@@ -21,12 +19,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Friend, Postcard
 from PIL import Image, ImageDraw, ImageFont
 import random
-import string
-import hashlib
-import io
 import base64
 from Crypto.Cipher import ChaCha20
-import time
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
 from datetime import datetime
