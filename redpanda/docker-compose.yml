@@ -7,7 +7,7 @@ services:
       - "9092:9092"
     volumes:
       - redpanda-data:/var/lib/redpanda/data
-    restart: always
+
 
 volumes:
   redpanda-data:

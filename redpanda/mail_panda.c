@@ -84,8 +84,11 @@ rd_kafka_t *create_consumer(const char *group_id, const char *offset_reset, int 
     rd_kafka_conf_t *conf = rd_kafka_conf_new();
     char errstr[512];
 
-    // Устанавливаем базовые параметры соединения (куда (докер!), кто, откуда смотрим уведомления (с начала, с конца))
-    rd_kafka_conf_set(conf, "bootstrap.servers", "localhost:9092", errstr, sizeof(errstr));
+    // Устанавливаем базовые параметры соединения
+    rd_kafka_conf_set(conf, "bootstrap.servers", "192.168.43.123:9092", errstr, sizeof(errstr));
+    // Включаем отладочные логи (уровень 7 — максимальная детализация)
+    rd_kafka_conf_set(conf, "log_level", "7", errstr, sizeof(errstr));
+    rd_kafka_conf_set(conf, "debug", "all", errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "group.id", group_id, errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "auto.offset.reset", offset_reset, errstr, sizeof(errstr));
 
@@ -190,7 +193,14 @@ void *handle_client(void *arg) {
     //     rd_kafka_topic_partition_list_add(offsets, (char*)login, i)->offset = ten_minutes_ago;
     // }
     // Запрашиваем у брокера смещения, соответствующие времени 10 минут назад
-    if (rd_kafka_offsets_for_times(rk, offsets, 1000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
+    if (rd_kafka_offsets_for_times(rk, offsets, 5000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
+        for (int i = 0; i < offsets->cnt; i++) {
+            if (offsets->elems[i].err != RD_KAFKA_RESP_ERR_NO_ERROR) {
+                fprintf(stderr, "Ошибка для топика %s, партиции %d: %s\n",
+                        offsets->elems[i].topic, offsets->elems[i].partition,
+                        rd_kafka_err2str(offsets->elems[i].err));
+            }
+        }
         send_response(client_fd, "Ошибка вычисления смещений\n");
         rd_kafka_topic_partition_list_destroy(offsets);
         cleanup(rk, client_fd);
