@@ -1,10 +1,12 @@
-﻿{% extends "base.html" %}﻿
+﻿{% extends "base.html" %}
 {% block title %}Просмотр открытки{% endblock %}
 
 {% block content %}
 <div class="view-card-container">
     <div class="card-display" style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
-        <img src="data:image/png;base64,{{ postcard.image_data | b64encode }}" alt="Открытка" style="max-width: 100%; max-height: 500px; object-fit: contain;">
+        <!-- Изменено: теперь используем путь к файлу вместо base64 -->
+        <img src="{{ url_for('static', filename=postcard.image_path) }}" alt="Открытка"
+            style="max-width: 100%; max-height: 500px; object-fit: contain;">
     </div>
 
     {% if show_private or not postcard.is_private %}
@@ -19,8 +21,11 @@
     {% endif %}
 
     <div class="card-info">
-        <p>Отправитель: <a href="{{ url_for('friend_profile', login=postcard.sender_login) }}">{{ sender.name }} {{ sender.surname }}</a></p>
+        <p>Отправитель: <a href="{{ url_for('friend_profile', login=postcard.sender_login) }}">{{ sender.name }} {{
+                sender.surname }}</a></p>
         <p>Дата отправки: {{ postcard.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+        <!-- Добавлено: информация о шрифте -->
+        <!-- <p>Использован шрифт: {{ postcard.font_used or 'Arial' }}</p> -->
     </div>
 
     <div class="card-actions">
@@ -28,5 +33,4 @@
         <a href="{{ url_for('download_card', card_id=postcard.id) }}" class="btn">Скачать открытку</a>
     </div>
 </div>
-
 {% endblock %}

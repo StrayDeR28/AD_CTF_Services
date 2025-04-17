@@ -1,0 +1,11 @@
+Запукс (лучше первый вариант, точно без сбоев)
+chmod +x start_redpanda.sh
+./start_redpanda.sh
+
+docker compose up
+
+Проверка состояния redpanda-1 (Up)
+docker ps
+
+Остановка: Используйте 
+docker compose down
