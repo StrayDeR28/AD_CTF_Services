@@ -84,9 +84,14 @@ rd_kafka_t *create_consumer(const char *group_id, const char *offset_reset, int 
     rd_kafka_conf_t *conf = rd_kafka_conf_new();
     char errstr[512];
 
+    // Получаем адрес брокера из переменной окружения KAFKA_BROKERS
+    const char *bootstrap_servers = getenv("KAFKA_BROKERS");
+    if (!bootstrap_servers) {
+        bootstrap_servers = "127.0.0.1:9092"; // Значение по умолчанию
+    }
+
     // Устанавливаем базовые параметры соединения
-    rd_kafka_conf_set(conf, "bootstrap.servers", "192.168.43.123:9092", errstr, sizeof(errstr));
-    // Включаем отладочные логи (уровень 7 — максимальная детализация)
+    rd_kafka_conf_set(conf, "bootstrap.servers", bootstrap_servers, errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "log_level", "7", errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "debug", "all", errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "group.id", group_id, errstr, sizeof(errstr));
@@ -146,7 +151,7 @@ void *handle_client(void *arg) {
     uint8_t login[MAX_LEN + 1] = {0};
     decrypt(encrypted, login, encrypted_len, key);
     login[encrypted_len] = '\0';
-
+// можно убрать, панда сама хрень отфильтрует, нет такого топика
     if (!is_valid_ascii_or_cyrillic((char*)login)) {
         send_response(client_fd, "Токен привёл к некорректному логину\n");
         cleanup(NULL, client_fd);
