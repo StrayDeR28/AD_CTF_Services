@@ -26,7 +26,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from datetime import datetime
 from encr import ImgEncrypt
 
-BROKER = "localhost:9092"
+BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
 POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
 app = Flask(__name__)
@@ -699,4 +699,4 @@ with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)  # Добавьте host='0.0.0.0'

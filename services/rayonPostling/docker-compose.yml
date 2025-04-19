@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - FLASK_RUN_HOST=0.0.0.0
+      - SQLALCHEMY_DATABASE_URI=sqlite:////app/postcards.db
+      - KAFKA_BROKERS=redpanda:9092
+    volumes:
+      - .:/app
+      - postcards_data:/app/static/postcards
+      - images_data:/app/static/images
+    depends_on:
+      - redpanda
+    networks:
+      - postcard_net
+
+  app:
+    build:
+      context: ../rayonPushling
+      dockerfile: Dockerfile
+    ports:
+      - "31337:31337"
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+    restart: always
+    depends_on:
+      - redpanda
+    networks:
+      - postcard_net
+
+  redpanda:
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    image: redpandadata/redpanda:v23.1.8
+    container_name: redpanda
+    ports:
+      - "9092:9092"
+      - "9644:9644"  # для Redpanda Console
+    command:
+      - redpanda
+      - start
+      - --smp 1
+      - --memory 1G
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://redpanda:9092
+    networks:
+      - postcard_net
+
+volumes:
+  postcards_data:
+  images_data:
+
+networks:
+  postcard_net:
+    driver: bridge
