@@ -1,0 +1,10 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "31337:31337"
+    environment:
+      - KAFKA_BROKERS=localhost:9092
+    restart: always
