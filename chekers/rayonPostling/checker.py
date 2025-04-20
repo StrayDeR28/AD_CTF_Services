@@ -196,7 +196,7 @@ def _verify_profile(profile_html, name, surname):
 def _send_postcard(s, receiver, message, private):
     try: # уточнить за параметры картинки++++++++++++++++++++++++
         data = {
-            "background": "default.png",  # Предполагаемый фон
+            "background": "default.png",  # Предполагаемый фон или i,b ?
             "front_text": "Test postcard",
             "message": message,
             "receiver": receiver,
