@@ -16,7 +16,7 @@ fi
 # Очистка сгенерированных файлов
 echo "Очистка сгенерированных файлов..."
 rm -rf static/postcards/* 2>/dev/null || echo "Папка static/postcards пуста или отсутствует"
-rm -rf static/images/backgrounds/* 2>/dev/null || echo "Папка static/images/backgrounds пуста или отсутствует"
+#rm -rf static/images/backgrounds/* 2>/dev/null || echo "Папка static/images/backgrounds пуста или отсутствует"
 
 # Удаление томов Redpanda
 echo "Удаление томов Redpanda..."
