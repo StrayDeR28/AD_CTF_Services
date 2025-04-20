@@ -31,6 +31,20 @@ TRACE = os.getenv("TRACE", False)
 def check(host: str):
     # Проверка всего функционал сервиса, но главное проверить всё, что мы не хотим, чтобы не удалили с сервиса.
     # Также для проверки можем посылать забитые тестовыми данными сообщения. Например для проверки сервиса бинарного проверять авторов.
+    #Register check
+
+    #Login check
+
+    #Friend add + Profile page check
+
+    #Download postcard check
+
+    #Surname vuln
+
+    #Signature vuln
+
+    #Postcard message vuln
+
     die(ExitStatus.OK, "Check ALL OK")
 
 
@@ -41,9 +55,11 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
         pass
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профиля в поле
+
         pass
     elif vuln == 3:
         # vuln - postcard text приватное сообщение открытки, прописываем при отправлении открытки
+
         pass
     else:
         die(ExitStatus.CHECKER_ERROR, f"vuln id out of range: {vuln}")
@@ -57,9 +73,11 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
         pass
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профиля в поле
+
         pass
     elif vuln == 3:
         # vuln - postcard text приватное сообщение открытки, прописываем при отправлении открытки
+        
         pass
     die(ExitStatus.OK, f"All OK! Successfully retrieved a flag from api")
 
