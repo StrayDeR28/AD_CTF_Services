@@ -2,7 +2,7 @@
 
 # Остановка Docker Compose и удаление томов
 echo "Остановка Docker Compose и удаление томов..."
-docker-compose down -v
+docker compose down -v
 
 # Удаление базы данных
 echo "Удаление базы данных..."
