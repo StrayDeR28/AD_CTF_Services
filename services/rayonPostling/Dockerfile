@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Создание необходимых директорий
-RUN mkdir -p static/postcards static/images/backgrounds static/temp
+RUN mkdir -p static/postcards static/temp
 
 EXPOSE 5000
 CMD ["python", "app.py"]
