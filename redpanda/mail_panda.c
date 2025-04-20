@@ -152,10 +152,10 @@ void *handle_client(void *arg) {
     decrypt(encrypted, login, encrypted_len, key);
     login[encrypted_len] = '\0';
 // можно убрать, панда сама хрень отфильтрует, нет такого топика
-    if (!is_valid_ascii_or_cyrillic((char*)login)) {
-        send_response(client_fd, "Токен привёл к некорректному логину\n");
-        cleanup(NULL, client_fd);
-    }
+    // if (!is_valid_ascii_or_cyrillic((char*)login)) {
+    //     send_response(client_fd, "Токен привёл к некорректному логину\n");
+    //     cleanup(NULL, client_fd);
+    // }
 
     send_response(client_fd, "Логин: %s\n", login);
 
@@ -215,7 +215,7 @@ void *handle_client(void *arg) {
     rd_kafka_topic_partition_list_destroy(offsets);
 
     send_response(client_fd, "Актуальные сообщения:\n");
-
+    send_response(client_fd, "Сообщения за последние 10 мин:\n");
     // Читаем сообщения за последние 10 минут
     while (1) {
         rd_kafka_message_t *msg = rd_kafka_consumer_poll(rk, 1000);
@@ -233,7 +233,8 @@ void *handle_client(void *arg) {
     // Закрываем первого потребителя
     rd_kafka_consumer_close(rk);
     rd_kafka_destroy(rk);
-
+    
+    send_response(client_fd, "Лед и свежесть:\n");
     // Создаём второго потребителя для новых сообщений
     rk = create_consumer(login, "latest", client_fd);
     // Подписываем второго потребителя на топик
