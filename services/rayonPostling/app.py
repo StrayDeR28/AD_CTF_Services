@@ -43,10 +43,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Создаем папку для загрузок, если ее нет
-os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-
-
 # Загрузка пользователя
 @login_manager.user_loader
 def load_user(user_id):
@@ -422,7 +418,7 @@ def send_postcard():
         app.logger.info(f"Запись создана с ID {new_postcard.id}")
 
         # Отправка уведомления
-        send_messages(receiver_login, f"Новая открытка от {current_user.login}")
+        send_messages(receiver_login, f"Новая открытка от {current_user.login}, сообщение: {message}")
 
         flash("Открытка успешно отправлена!")
         return redirect(url_for("main"))
