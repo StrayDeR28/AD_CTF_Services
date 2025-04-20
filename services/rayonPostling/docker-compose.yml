@@ -24,7 +24,7 @@ services:
 
   app:
     build:
-      context: ../rayonPushling
+      context: ./rayonPushling
       dockerfile: Dockerfile
     ports:
       - "31337:31337"
