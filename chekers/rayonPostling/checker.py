@@ -196,12 +196,13 @@ def _verify_profile(profile_html, name, surname):
 def _send_postcard(s, receiver, message, private):
     try: # уточнить за параметры картинки++++++++++++++++++++++++
         data = {
-            "background": "default.png",  # Предполагаемый фон или i,b ?
+            "background": "b.png",  # Предполагаемый фон или i,b ?
             "front_text": "Test postcard",
             "message": message,
             "receiver": receiver,
-            "pos_x": "50",
-            "pos_y": "50",
+            #"font_size":"24",
+            "pos_x": "200",
+            "pos_y": "200",
             "color": "#000000",
             "font": "Arial",
         }
@@ -220,6 +221,18 @@ def _send_postcard(s, receiver, message, private):
     
     return int(match.group(1))
 
+# переход на страницу картинки перед скачиванием, хз возможно не нужно
+def _view_postcard(session, base_url, card_id):
+    try:
+        r = session.get(f"{base_url}/view_card/{card_id}")
+    except requests.RequestException as e:
+        die(ExitStatus.DOWN, f"Failed to view postcard {card_id}: {e}")
+    if r.status_code != 200:
+        die(ExitStatus.MUMBLE, f"Unexpected /view_card/{card_id} status code {r.status_code}")
+    # Проверяем наличие ссылки на скачивание
+    if f"/download_card/{card_id}" not in r.text:
+        die(ExitStatus.MUMBLE, f"Download link not found in /view_card/{card_id}")
+        
 # скачивание открытки
 def _download_postcard(s, card_id):
     try:
@@ -229,7 +242,9 @@ def _download_postcard(s, card_id):
     
     if r.status_code != 200:
         die(ExitStatus.MUMBLE, f"Unexpected /download_card/{card_id} status code {r.status_code}")
-    
+    if not r.content:
+        die(ExitStatus.MUMBLE, f"Empty data downloaded for card {card_id}")
+        
     return r.content # тип картинка в байтах
     
 # Основные функции        
@@ -271,12 +286,12 @@ def check(host: str):
     
     _login(s1, username1, password1)
     _login(s2, username2, password2)
-    
+    # дружим
     _add_friend(s1, username2)
     request_id = _get_friend_request_id(s2, username1)
     _accept_friend(s2, request_id)
+    # подглядываем
     profile = _get_profile(s1, username2)
-    
     if not _verify_profile(profile, name2, surname2):
         die(ExitStatus.MUMBLE, f"Friend profile does not contain expected name and surname")
         flag_check = False
@@ -298,12 +313,17 @@ def check(host: str):
     _login(s1, username1, password1)
     _login(s2, username2, password2)
     _login(s3, username3, password3)
-    
+    # дружим
     _add_friend(s1, username2)
     request_id = _get_friend_request_id(s2, username1)
     _accept_friend(s2, request_id)
+    # отправка писем
     open_postcard_id = _send_postcard(s1, username2, message="Test open postcard", private=False)
     private_postcard_id = _send_postcard(s1, username2, message="Test private postcard", private=True)
+    # # Перейти на открытки по ID           если можно скачивать сразу, то не нужно
+    # _view_postcard(s3, open_postcard_id)
+    # _view_postcard(s3, private_postcard_id)
+    # скачиваем
     open_data = _download_postcard(s3, open_postcard_id)
     private_data = _download_postcard(s3, private_postcard_id)
     # это норм, не норм? вроде как должно фикситься 
