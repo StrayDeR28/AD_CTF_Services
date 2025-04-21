@@ -443,9 +443,6 @@ def view_card(card_id):
         or current_user.login == postcard.receiver_login
     )
 
-    if postcard.is_private and not show_private:
-        abort(403)
-
     # Проверка существования файла
     if not os.path.exists(os.path.join(app.static_folder, postcard.image_path)):
         app.logger.error(f"Файл открытки не найден: {postcard.image_path}")
@@ -462,17 +459,10 @@ def view_card(card_id):
 def download_card(card_id):
     postcard = Postcard.query.get_or_404(card_id)
 
-    # Проверка прав доступа
-    if (
-        current_user.login != postcard.sender_login
-        and current_user.login != postcard.receiver_login
-        and postcard.is_private
-    ):
-        abort(403)
-
     filepath = os.path.join(app.static_folder, postcard.image_path)
     if not os.path.exists(filepath):
-        abort(404)
+        flash("Файл открытки повреждён или удалён")
+        return redirect(url_for("main"))
 
     filename = f"postcard_{postcard.id}.png"
     return send_from_directory(
@@ -490,7 +480,6 @@ def download_file(filename):
     return send_from_directory(
         os.path.join("static", "temp"), filename, as_attachment=True
     )
-
 
 # Функция создания топика
 def create_topic(login):
