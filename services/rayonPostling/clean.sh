@@ -31,4 +31,4 @@ docker image prune -a -f
 echo "Очистка кэша сборки..."
 docker builder prune -a -f
 
-echo "Очистка завершена! Можно запускать: docker-compose up --build"
+echo "Очистка завершена! Можно запускать: docker compose up --build"
