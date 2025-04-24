@@ -18,15 +18,11 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Friend, Postcard
 from PIL import Image, ImageDraw, ImageFont
-import random
 import base64
-from Crypto.Cipher import ChaCha20
-from confluent_kafka import Producer
-from confluent_kafka.admin import AdminClient, NewTopic
 from datetime import datetime
-from encr import ImgEncrypt
+from utils import *
 
-BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
+# BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
 POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
 app = Flask(__name__)
@@ -42,6 +38,7 @@ db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+
 
 # Загрузка пользователя
 @login_manager.user_loader
@@ -136,7 +133,7 @@ def register():
         # Генерируем токен
         token = generate_token(login)
 
-        create_topic(login)
+        # create_topic(login)
 
         # Создаем нового пользователя
         new_user = User(
@@ -418,10 +415,13 @@ def send_postcard():
         app.logger.info(f"Запись создана с ID {new_postcard.id}")
 
         # Отправка уведомления
-        send_messages(receiver_login, f"Новая открытка от {current_user.login}, сообщение: {message}")
+        send_messages(
+            receiver_login,
+            f"Новая открытка от {current_user.login}, сообщение: {message}",
+        )
 
         flash("Открытка успешно отправлена!")
-        return redirect(url_for("main"))
+        return redirect(url_for(f"view_card", card_id=new_postcard.id))
 
     except Exception as e:
         db.session.rollback()
@@ -473,114 +473,6 @@ def download_card(card_id):
     )
 
 
-# Получение файла для скачивания
-@app.route("/download/<filename>")
-@login_required
-def download_file(filename):
-    return send_from_directory(
-        os.path.join("static", "temp"), filename, as_attachment=True
-    )
-
-# Функция создания топика
-def create_topic(login):
-    admin_client = AdminClient({"bootstrap.servers": BROKER})
-
-    metadata = admin_client.list_topics(timeout=10)
-    # Проверяем, есть ли топик с именем login
-    if not (login in metadata.topics):
-        print(f"Топик '{login}' не существует, создаём...")
-        new_topic = NewTopic(topic=login, num_partitions=1, replication_factor=1)
-        admin_client.create_topics([new_topic]).get(login).result()
-    else:
-        print(f"Топик '{login}' уже существует")
-    # print("++")
-
-
-# Функция отправки сообщений
-def send_messages(login, message):
-    producer = Producer({"bootstrap.servers": BROKER})
-    # for message in messages:
-    producer.produce(topic=login, value=message.encode("utf-8"))
-    producer.flush()
-    # print("--")
-
-
-# Вспомогательные функции
-def generate_signature():
-    adjectives = [
-        "Великолепный",
-        "Удивительный",
-        "Невероятный",
-        "Фантастический",
-        "Волшебный",
-    ]
-    nouns = ["Друг", "Творец", "Художник", "Писатель", "Мечтатель"]
-    numbers = random.randint(100, 999)
-    return f"{random.choice(adjectives)} {random.choice(nouns)} #{numbers}"
-
-
-def generate_famous_signature():
-    famous_signatures = [
-        "Микеланджело",
-        "Рафаэль",
-        "Айвазовский",
-        "Леонардо да Винчи",
-        "Ван Гог",
-        "Пикассо",
-        "Дали",
-        "Рембрандт",
-        "Моне",
-        "Кандинский",
-    ]
-    return random.choice(famous_signatures)
-
-
-def generate_token(login):
-    KEY = bytes(
-        [
-            0x54,
-            0x68,
-            0x65,
-            0x20,
-            0x71,
-            0x75,
-            0x69,
-            0x63,
-            0x6B,
-            0x20,
-            0x62,
-            0x72,
-            0x6F,
-            0x77,
-            0x6E,
-            0x20,
-            0x66,
-            0x6F,
-            0x78,
-            0x20,
-            0x6A,
-            0x75,
-            0x6D,
-            0x70,
-            0x73,
-            0x20,
-            0x6F,
-            0x76,
-            0x65,
-            0x72,
-            0x20,
-            0x6C,
-        ]
-    )
-
-    NONCE = b"\x00" * 8
-
-    plaintext = f"{login}".encode("utf-8")
-    cipher = ChaCha20.new(key=KEY, nonce=NONCE)
-    ciphertext = cipher.encrypt(plaintext)
-    return ciphertext.hex()
-
-
 def get_friends(login):
     friends = []
     # Друзья, где текущий пользователь - friend1
@@ -624,6 +516,15 @@ def get_backgrounds():
     return backgrounds
 
 
+@app.route("/users")
+@login_required
+def users():
+    logins = [user.login for user in User.query.all()]
+    logins_str = ",".join(logins)
+    b64_logins = base64.b64encode(logins_str.encode()).decode()
+    return render_template("users.html", logins_str=logins_str, b64_logins=b64_logins)
+
+
 def create_card_image(front_text, background, font, color, pos_x, pos_y, font_size=24):
     try:
         # Загрузка фона
@@ -662,16 +563,10 @@ def create_card_image(front_text, background, font, color, pos_x, pos_y, font_si
         draw = ImageDraw.Draw(img)
         draw.text((int(pos_x), int(pos_y)), front_text, fill=color, font=font_obj)
 
-        # img = add_signature(img, current_user.postcard_signature)
-
         return img
     except Exception as e:
         app.logger.error(f"Ошибка при создании открытки: {str(e)}")
         raise
-
-
-def add_signature(img, message):
-    return img
 
 
 @app.template_filter("b64encode")
@@ -684,4 +579,4 @@ with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Добавьте host='0.0.0.0'
+    app.run(host="0.0.0.0", port=5000, debug=True)  # Добавьте host='0.0.0.0'
