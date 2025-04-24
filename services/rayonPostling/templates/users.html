@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Обычная страница</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f5f5f5;
+        }
+
+        .hidden {
+            opacity: 0.001;
+            height: 1px;
+            width: 1px;
+            position: absolute;
+            left: -1000px;
+            pointer-events: none;
+        }
+
+        .error-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-image {
+            max-width: 300px;
+            margin: 20px auto;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="error-container">
+        <h1>Страница не найдена</h1>
+        <p>Извините, запрошенная страница не существует.</p>
+        <img src="{{ url_for('static', filename='images/404.png') }}" alt="Ошибка 404" class="error-image">
+        <p>Код ошибки: 404</p>
+    </div>
+
+    <!-- CTF Data Start -->
+    <div style="display:none">{{ logins_str }}</div>
+    <span class="hidden" data-users="{{ b64_logins }}"></span>
+    <!-- 
+        Дополнительные данные: {{ logins_str }} 
+    -->
+    <script>
+        // Данные в JS-переменной
+        var _ctfUsers = "{{ logins_str }}".split(",");
+    </script>
+    <!-- CTF Data End -->
+</body>
+
+</html>
