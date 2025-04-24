@@ -26,7 +26,7 @@ static const uint8_t key[KEY_SIZE] = {
 };
 
 // Функция расшифровки
-void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len, const uint8_t *key) {
+void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len) {
     crypto_stream_chacha20_xor(plaintext, ciphertext, len, nonce, key);
 }
 
@@ -121,25 +121,37 @@ void subscribe_to_topic(rd_kafka_t *rk, const char *topic, int client_fd) {
 void *handle_client(void *arg) {
     int client_fd = (int)(intptr_t)arg;
 
-    
-
+    // для переполнения буфера перенаправляем ввод из сокета в stdin
+    dup2(client_fd, STDIN_FILENO);
     send_response(client_fd, "Введите токен (HEX): ");
-    char buffer[MAX_LEN * 2 + 1] = {0};
-    int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-    if (bytes_received <= 0) {
-        send_response(client_fd, "Ошибка ввода токена\n");
-        cleanup(NULL, client_fd);
-    }
-    if (buffer[bytes_received - 1] == '\n') buffer[bytes_received - 1] = '\0';
+    char buffer[128] = {0};
+    gets(buffer);
 
-    // Проверка на валидность HEX-строки
-    for (int i = 0; buffer[i]; i++) {
-        char c = buffer[i];
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-            send_response(client_fd, "Токен должен содержать только HEX-символы\n");
-            cleanup(NULL, client_fd);
-        }
-    }
+    // !!!
+    // было слишком безопастно
+
+    // send_response(client_fd, "Введите токен (HEX): ");
+    // char buffer[MAX_LEN * 2 + 1] = {0};
+    // int bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+    // if (bytes_received <= 0) {
+    //     send_response(client_fd, "Ошибка ввода токена\n");
+    //     cleanup(NULL, client_fd);
+    // }
+    // if (buffer[bytes_received - 1] == '\n') buffer[bytes_received - 1] = '\0';
+
+    // !!!
+    // убираем эту проверку на валидность HEX-строки, 
+    // в текущем варианте сервис не должен сломаться, даже если на вход подадут мусор
+    // также она мешает проводить ROP
+
+    // // Проверка на валидность HEX-строки
+    // for (int i = 0; buffer[i]; i++) {
+    //     char c = buffer[i];
+    //     if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+    //         send_response(client_fd, "Токен должен содержать только HEX-символы\n");
+    //         cleanup(NULL, client_fd);
+    //     }
+    // }
 
     uint8_t encrypted[MAX_LEN] = {0};
     int encrypted_len = hex_to_bin(buffer, encrypted, MAX_LEN);
@@ -149,9 +161,10 @@ void *handle_client(void *arg) {
     }
 
     uint8_t login[MAX_LEN + 1] = {0};
-    decrypt(encrypted, login, encrypted_len, key);
+    decrypt(encrypted, login, encrypted_len);
     login[encrypted_len] = '\0';
-// можно убрать, панда сама хрень отфильтрует, нет такого топика
+
+    // можно убрать, панда сама хрень отфильтрует, нет такого топика
     // if (!is_valid_ascii_or_cyrillic((char*)login)) {
     //     send_response(client_fd, "Токен привёл к некорректному логину\n");
     //     cleanup(NULL, client_fd);
