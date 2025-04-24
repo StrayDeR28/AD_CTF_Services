@@ -22,7 +22,6 @@ import base64
 from datetime import datetime
 from utils import *
 
-# BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
 POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
 app = Flask(__name__)
