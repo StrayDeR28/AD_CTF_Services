@@ -246,14 +246,8 @@ def _download_postcard(s, card_id):
         die(ExitStatus.MUMBLE, f"Empty data downloaded for card {card_id}")
         
     return r.content # тип картинка в байтах
-    
-# Основные функции        
-def check(host: str):
-    # Проверка всего функционал сервиса, но главное проверить всё, что мы не хотим, чтобы удалили с сервиса.
-    # Также для проверки можем посылать забитые тестовыми данными сообщения. Например для проверки сервиса бинарного проверять авторов.
-    flag_check = True
-    
-    #Register check
+
+def Register(host):
     _log("Checking registration")
     s1 = FakeSession(host, PORT)
     username1, password1, name1, surname1 = _gen_user()
@@ -262,18 +256,23 @@ def check(host: str):
     
     if r.status_code != 200:        # а это доступно?
         die(ExitStatus.MUMBLE, f"Failed to access login page after registration, status code {r.status_code}")
-        flag_check = False
-    
-    #Login check
+        return False
+    return True
+
+def Login(host):
     _log("Checking login")
+    s1 = FakeSession(host, PORT)
+    username1, password1, name1, surname1 = _gen_user()
+    _register(s1, username1, password1, name1, surname1)
     _login(s1, username1, password1)
     r = s1.get("/")
     
     if r.status_code != 200:        # а это доступно?
         die(ExitStatus.MUMBLE, f"Failed to access main page after login, status code {r.status_code}")
-        flag_check = False
+        return False
+    return True        
         
-    #Friend add + Profile page check
+def Friend_add_Profile_page(host):
     _log("Checking friend add and profile page")
     s1 = FakeSession(host, PORT)
     s2 = FakeSession(host, PORT)
@@ -294,9 +293,10 @@ def check(host: str):
     profile = _get_profile(s1, username2)
     if not _verify_profile(profile, name2, surname2):
         die(ExitStatus.MUMBLE, f"Friend profile does not contain expected name and surname")
-        flag_check = False
-        
-    #Download postcard check
+        return False
+    return True
+
+def Download_postcard_check(host):
     _log("Checking postcard sending and downloading")
     s1 = FakeSession(host, PORT)
     s2 = FakeSession(host, PORT)
@@ -329,7 +329,26 @@ def check(host: str):
     # это норм, не норм? вроде как должно фикситься 
     if not open_data or not private_data:
         die(ExitStatus.MUMBLE, f"Failed to download postcards")
-        flag_check = False
+        return False
+    return True
+
+# Основные функции        
+def check(host: str):
+    # Проверка всего функционал сервиса, но главное проверить всё, что мы не хотим, чтобы удалили с сервиса.
+    # Также для проверки можем посылать забитые тестовыми данными сообщения. Например для проверки сервиса бинарного проверять авторов.
+    flag_check = True
+    
+    #Register check
+    flag_check = Register(host)
+    
+    #Login check
+    flag_check = Login(host)
+        
+    #Friend add + Profile page check
+    flag_check = Friend_add_Profile_page(host)
+        
+    #Download postcard check
+    flag_check = Download_postcard_check(host)
         
     #Surname vuln
 
