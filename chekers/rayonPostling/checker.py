@@ -21,7 +21,7 @@ random = random.SystemRandom()
 
 """ <config> """
 # SERVICE INFO
-PORT = 8888
+PORT = 5000
 EXPLOIT_NAME = argv[0]
 
 # DEBUG -- logs to stderr, TRACE -- log HTTP requests
