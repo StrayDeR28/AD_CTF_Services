@@ -133,7 +133,7 @@ def register():
         # Генерируем токен
         token = generate_token(login)
 
-        # create_topic(login)
+        create_topic(login)
 
         # Создаем нового пользователя
         new_user = User(

@@ -84,7 +84,6 @@ def create_topic(login):
 
 # Функция отправки сообщений
 def send_messages(login, message):
-    return
     producer = Producer({"bootstrap.servers": BROKER})
     # for message in messages:
     producer.produce(topic=login, value=message.encode("utf-8"))
