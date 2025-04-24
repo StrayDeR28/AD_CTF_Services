@@ -212,7 +212,7 @@ def _send_postcard(s, receiver, message, private):
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
     
-    if r.status_code != 200:
+    if r.status_code != 302:
         die(ExitStatus.MUMBLE, f"Unexpected /send_postcard status code {r.status_code}")
     # тут надо найти айди, как конкретно пока хз+++++++++++++++++++++
     match = re.search(r'/view_card/(\d+)', r.text)
