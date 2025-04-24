@@ -215,6 +215,10 @@ def _send_postcard(s, receiver, message, private):
     if r.status_code != 302:
         die(ExitStatus.MUMBLE, f"Unexpected /send_postcard status code {r.status_code}")
     # тут надо найти айди, как конкретно пока хз+++++++++++++++++++++
+    # если allow_redirects=False
+    # location = r.headers.get("Location")
+    # match = re.search(r'/view_card/(\d+)', location)
+
     match = re.search(r'/view_card/(\d+)', r.text)
     if not match:
         die(ExitStatus.MUMBLE, "Failed to extract postcard ID")
