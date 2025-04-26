@@ -19,8 +19,7 @@ services:
       - images_data:/app/static/images
     depends_on:
       - redpanda
-    networks:
-      - postcard_net
+    
 
   app:
     build:
@@ -33,8 +32,7 @@ services:
     restart: always
     depends_on:
       - redpanda
-    networks:
-      - postcard_net
+    
 
   redpanda:
     healthcheck:
@@ -44,23 +42,16 @@ services:
       retries: 10
     image: redpandadata/redpanda:v23.1.8
     container_name: redpanda
-    ports:
-      - "9092:9092"
-      - "9644:9644"  # для Redpanda Console
     command:
       - redpanda
       - start
       - --smp 1
       - --memory 1G
-      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://redpanda:9092
-    networks:
-      - postcard_net
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    expose:
+      - "9092"
 
 volumes:
   postcards_data:
   images_data:
-
-networks:
-  postcard_net:
-    driver: bridge
