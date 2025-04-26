@@ -16,6 +16,10 @@ from sys import argv
 # Make all random more random.
 import requests
 from faker import Faker
+from pwn import *
+from bs4 import BeautifulSoup
+
+context.log_level = 'info' #????
 
 random = random.SystemRandom()
 
@@ -260,8 +264,6 @@ def Register(host):
     
     if r.status_code != 200:        # а это доступно?
         die(ExitStatus.MUMBLE, f"Failed to access login page after registration, status code {r.status_code}")
-        return False
-    return True
 
 def Login(host):
     _log("Checking login")
@@ -272,9 +274,7 @@ def Login(host):
     r = s1.get("/")
     
     if r.status_code != 200:        # а это доступно?
-        die(ExitStatus.MUMBLE, f"Failed to access main page after login, status code {r.status_code}")
-        return False
-    return True        
+        die(ExitStatus.MUMBLE, f"Failed to access main page after login, status code {r.status_code}")     
         
 def Friend_add_Profile_page(host):
     _log("Checking friend add and profile page")
@@ -297,8 +297,6 @@ def Friend_add_Profile_page(host):
     profile = _get_profile(s1, username2)
     if not _verify_profile(profile, name2, surname2):
         die(ExitStatus.MUMBLE, f"Friend profile does not contain expected name and surname")
-        return False
-    return True
 
 def Download_postcard_check(host):
     _log("Checking postcard sending and downloading")
@@ -333,35 +331,140 @@ def Download_postcard_check(host):
     # это норм, не норм? вроде как должно фикситься 
     if not open_data or not private_data:
         die(ExitStatus.MUMBLE, f"Failed to download postcards")
-        return False
-    return True
 
+# бинарь-уведомления
+def postcard_message_check(host: str):
+    try:
+        s1 = FakeSession(host, PORT)
+        s2 = FakeSession(host, PORT)
+
+        username1, password1, name1, surname1 = _gen_user()
+        username2, password2, name2, surname2 = _gen_user()
+
+        log.info("Registering two users")
+        _register(s1, username1, password1, name1, surname1)
+        _register(s2, username2, password2, name2, surname2)
+
+        log.info("Logging in both users")
+        _login(s1, username1, password1)
+        _login(s2, username2, password2)
+
+        log.info("Sending and accepting friend request")
+        _add_friend(s1, username2)
+        request_id = _get_friend_request_id(s2, username1)
+        _accept_friend(s2, request_id)
+
+        log.info("Fetching notification token")
+        profile_html = s1.get("/profile").text
+        token_match = re.search(r'<p><strong>Токен:</strong>\s*([a-f0-9]+)</p>', profile_html)
+        if not token_match:
+            log.failure("Notification token not found")
+            die(ExitStatus.MUMBLE, "Notification token not found")
+        token = token_match.group(1)
+
+        test_message = "SECRET_TEST_" + rand_string(16)
+        log.info(f"Sending test postcard with message: {test_message}")
+        _send_postcard(s2, username1, test_message, private=True)
+
+        # Подключаемся к бинарному сервису через сокет
+        log.info(f"Connecting to mail_panda binary on {host}:31337")
+        p = remote(host, 31337)
+
+        p.recvuntil("Введите токен (HEX):")
+        p.sendline(token)
+
+        # Формируем ожидаемую строку
+        expected_line = f"Новая открытка от {username2}, сообщение: {test_message}"
+
+        log.info("Waiting for expected notification...")
+
+        start_time = time.time()
+        found = False
+
+        while time.time() - start_time < 10:
+            try:
+                line = p.recvline()
+                if not line:
+                    continue
+                decoded_line = line.decode('utf-8', errors='ignore').strip()
+                log.info(f"Received line: {decoded_line}")
+                if expected_line in decoded_line:
+                    found = True
+                    break
+            except EOFError:
+                # Сервер закрыл соединение — выход
+                break
+
+        p.close()
+
+        if found == False:
+            log.failure("Test message not found in output after 10 seconds")
+            die(ExitStatus.CORRUPT, "Test message not found in notifications")
+        else:
+            log.success("Test message found! Everything is OK!")
+
+    except requests.exceptions.RequestException as e:
+        log.failure(f"Network error: {e}")
+        die(ExitStatus.DOWN, f"Network error: {str(e)}")
+    except Exception as e:
+        log.failure(f"Unexpected error: {e}")
+        die(ExitStatus.MUMBLE, f"Unexpected error: {str(e)}")
+
+#список пользователей
+def List_of_users_check(host):
+    _log("List of users check")
+    s1 = FakeSession(host, PORT)
+    username1, password1, name1, surname1 = _gen_user()
+    _register(s1, username1, password1, name1, surname1)
+    _login(s1, username1, password1)
+    r = s1.get("/users")
+    
+    if r.status_code != 200:        # а это доступно?
+        die(ExitStatus.MUMBLE, f"Failed to access users page after login, status code {r.status_code}")
+    # начинаем искать пользователей
+    soup = BeautifulSoup(r.text, 'html.parser')
+
+    # Попробуем найти логины в <span class="hidden" data-users="...">
+    hidden_span = soup.find("span", {"class": "hidden", "data-users": True})
+    if hidden_span:
+        try:
+            b64_data = hidden_span["data-users"]
+            decoded = base64.b64decode(b64_data).decode()
+            logins = [login.strip() for login in decoded.split(",") if login.strip()]
+        except Exception as e:
+            _log(f"[!] Не удалось распарсить логины из data-users: {e}")
+
+    if not username1 in logins: # Ищем пользователя среди логинов
+        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}") 
+    
 # Основные функции        
 def check(host: str):
     # Проверка всего функционал сервиса, но главное проверить всё, что мы не хотим, чтобы удалили с сервиса.
     # Также для проверки можем посылать забитые тестовыми данными сообщения. Например для проверки сервиса бинарного проверять авторов.
-    flag_check = True
     
     #Register check
-    flag_check = Register(host)
+    Register(host)
     
     #Login check
-    flag_check = Login(host)
-        
+    Login(host)
+    
+    #List of users check
+    List_of_users_check(host)
+    
     #Friend add + Profile page check
-    flag_check = Friend_add_Profile_page(host)
+    Friend_add_Profile_page(host)
         
     #Download postcard check
-    flag_check = Download_postcard_check(host)
+    Download_postcard_check(host)
         
     #Surname vuln
 
     #Signature vuln
 
     #Postcard message vuln
-
-    if flag_check:
-        die(ExitStatus.OK, "Check ALL OK")
+    postcard_message_check(host)
+    
+    die(ExitStatus.OK, "Check ALL OK")
 
 
 def put(host: str, flag_id: str, flag: str, vuln: int):
