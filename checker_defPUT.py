@@ -30,7 +30,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             #profile = _get_profile(s1, username1)
             profile_html = s1.get("/profile").text
             # вставляем в поле signature флаг
-            signature_match = re.search(r'<input type="text" name="signature" value="\s*([A-Za-z0-9_]+)" required>', profile_html)
+            re.sub(r'<input type="text" name="signature" value="\s*([A-Za-z0-9_]+)" required>', flag, profile_html)
         except Exception as e:
             log.failure(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
