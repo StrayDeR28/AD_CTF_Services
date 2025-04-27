@@ -1,11 +1,11 @@
 def put(host: str, flag_id: str, flag: str, vuln: int):
-    
+    postcard_id1
+    username1
+    password1
     if vuln == 1:
         #vuln - surname кладем в фамилию при регистрации
-        postcard_id1 = None
-        
         try:
-            #_log("[Checker PUT] Surname vuln")
+            _log("[Checker PUT] Surname vuln")
             # регистрация пользователя
             s1 = FakeSession(host, PORT)
             username1, password1, name1, surname1 = _gen_user()
@@ -18,10 +18,8 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
         pass
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профиля в поле
-        postcard_id1 = None
-        
         try:
-            #_log("[Checker PUT] Signature vuln")
+            _log("[Checker PUT] Signature vuln")
             # регистрация пользователя
             s1 = FakeSession(host, PORT)
             username1, password1, name1, surname1 = _gen_user()
@@ -41,9 +39,8 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
         pass
     elif vuln == 3:
         # vuln - postcard text приватное сообщение открытки, прописываем при отправлении открытки
-        
         try:
-            #_log("[Checker PUT] Postcard message vuln")
+            _log("[Checker PUT] Postcard message vuln")
             # создаем 2 пользователя
             s1 = FakeSession(host, PORT)
             s2 = FakeSession(host, PORT)
@@ -52,20 +49,20 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _register(s1, username1, password1, name1, surname1)
             _register(s2, username2, password2, name2, surname2)
             _login(s1, username1, password1)
-            _login(s2, username2, password2)
+            #_login(s2, username2, password2)
             # отправка приглашения в друзья 2-ому пользователю
             _add_friend(s1, username2)
+            _login(s2, username2, password2)
             request_id = _get_friend_request_id(s2, username1)
             # на 2-ом пользователе принимаем запрос в друзья
             _accept_friend(s2, request_id)
             # возвращаемся на 1-ого пользователя
             # и пишем открытку в закрытом виде, в поле текста вставляем флаг
+            _login(s1, username1, password1)
             postcard_id1 = _send_postcard(s1, username2, flag, private=True)
         except Exception as e:
             log.failure(f"Failed to put flag in send message (vuln=3): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
-        
-
         pass
     else:
         die(ExitStatus.CHECKER_ERROR, f"vuln id out of range: {vuln}")

@@ -14,8 +14,6 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             s1 = FakeSession(host, PORT)
             # вход в аккаунт
             _login(s1, data["username"], data["password"])
-            # выводим ненужное поле postcard_id
-            postcardID = data["postcard_id"]
             # вход в профиль
             profile_html = s1.get("/profile").text
             # вытаскиваем из поля surname флаг
@@ -36,8 +34,6 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             s1 = FakeSession(host, PORT)
             # вход в аккаунт
             _login(s1, data["username"], data["password"])
-            # выводим ненужное поле postcard_id
-            postcardID = data["postcard_id"]
             # вход в профиль
             profile_html = s1.get("/profile").text
             # вытаскиваем из поля signature флаг
@@ -63,7 +59,7 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             # выбор нужной отправленной открытки в списке своих отправленных
             postcardID = data["postcard_id"]
             # переход на страницу открытки
-            _view_postcard(s1, host, postcardID)   # host ????
+            _view_postcard(s1, host, postcardID)
             # вытаскиваем флаг из поля текста открытки
             soup = BeautifulSoup(profile_html, 'html.parser')
             outputflag = soup.find(string=flag)
