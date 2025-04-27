@@ -2,6 +2,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
     
     if vuln == 1:
         #vuln - surname кладем в фамилию при регистрации
+        postcard_id1 = None
         
         try:
             #_log("[Checker PUT] Surname vuln")
@@ -17,6 +18,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
         pass
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профиля в поле
+        postcard_id1 = None
         
         try:
             #_log("[Checker PUT] Signature vuln")
@@ -58,7 +60,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _accept_friend(s2, request_id)
             # возвращаемся на 1-ого пользователя
             # и пишем открытку в закрытом виде, в поле текста вставляем флаг
-            _send_postcard(s1, username2, flag, private=True)
+            postcard_id1 = _send_postcard(s1, username2, flag, private=True)
         except Exception as e:
             log.failure(f"Failed to put flag in send message (vuln=3): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
@@ -72,6 +74,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
         {
             "username": username1,
             "password": password1,
+            "postcard_id": postcard_id1,
         }
     )
 
