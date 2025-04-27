@@ -230,17 +230,17 @@ def _send_postcard(s, receiver, message, private):
     
     return int(match.group(1))
 
-# # переход на страницу картинки перед скачиванием, хз возможно не нужно
-# def _view_postcard(session, base_url, card_id):
-#     try:
-#         r = session.get(f"{base_url}/view_card/{card_id}")
-#     except requests.RequestException as e:
-#         die(ExitStatus.DOWN, f"Failed to view postcard {card_id}: {e}")
-#     if r.status_code != 200:
-#         die(ExitStatus.MUMBLE, f"Unexpected /view_card/{card_id} status code {r.status_code}")
-#     # Проверяем наличие ссылки на скачивание
-#     if f"/download_card/{card_id}" not in r.text:
-#         die(ExitStatus.MUMBLE, f"Download link not found in /view_card/{card_id}")
+# переход на страницу картинки перед скачиванием, хз возможно не нужно
+def _view_postcard(session, card_id):
+    try:
+        r = session.get(f"/view_card/{card_id}")
+    except requests.RequestException as e:
+        die(ExitStatus.DOWN, f"Failed to view postcard {card_id}: {e}")
+    if r.status_code != 200:
+        die(ExitStatus.MUMBLE, f"Unexpected /view_card/{card_id} status code {r.status_code}")
+    # Проверяем наличие ссылки на скачивание
+    if f"/download_card/{card_id}" not in r.text:
+        die(ExitStatus.MUMBLE, f"Download link not found in /view_card/{card_id}")
         
 # скачивание открытки
 def _download_postcard(s, card_id):
