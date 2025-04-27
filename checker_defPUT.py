@@ -76,4 +76,4 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
     )
 
     print(jd, flush=True)  # It's our flag_id now! Tell it to jury!
-    die(ExitStatus.OK, "")
+    die(ExitStatus.OK, f"{jd}")
