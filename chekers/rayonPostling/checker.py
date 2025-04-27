@@ -209,6 +209,7 @@ def _send_postcard(s, receiver, message, private):
             "pos_y": "200",
             "color": "#000000",
             "font": "Arial",
+            "is_private":"off"
         }
         if private:
             data["is_private"] = "on"
