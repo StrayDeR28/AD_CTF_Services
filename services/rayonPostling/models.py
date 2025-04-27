@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -41,11 +42,8 @@ class Postcard(db.Model):
     )
     text = db.Column(db.Text)
     is_private = db.Column(db.Boolean, default=False, nullable=False)
-
-    # image_data = db.Column(db.LargeBinary)
     image_path = db.Column(db.String(200), nullable=False)
-
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    created_at = db.Column(db.DateTime, default=datetime.now, index=True)
 
     # Создаем индексы
     __table_args__ = (

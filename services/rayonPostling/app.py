@@ -173,11 +173,19 @@ def profile():
     # Получаем список друзей
     friends = get_friends(current_user.login)
 
-    # Получаем отправленные и полученные открытки
-    sent_postcards = Postcard.query.filter_by(sender_login=current_user.login).all()
-    received_postcards = Postcard.query.filter_by(
-        receiver_login=current_user.login
-    ).all()
+    # Получаем отправленные открытки (новые сначала)
+    sent_postcards = (
+        Postcard.query.filter_by(sender_login=current_user.login)
+        .order_by(Postcard.created_at.desc())
+        .all()
+    )  # <- Добавлен order_by
+
+    # Получаем полученные открытки (новые сначала)
+    received_postcards = (
+        Postcard.query.filter_by(receiver_login=current_user.login)
+        .order_by(Postcard.created_at.desc())
+        .all()
+    )  # <- Добавлен order_by
 
     return render_template(
         "profile.html",
@@ -413,6 +421,9 @@ def send_postcard():
         db.session.commit()
         app.logger.info(f"Запись создана с ID {new_postcard.id}")
 
+        # Проверяем и очищаем старые открытки
+        cleanup_old_postcards()
+
         # Отправка уведомления
         send_messages(
             receiver_login,
@@ -524,6 +535,44 @@ def users():
     return render_template("users.html", logins_str=logins_str, b64_logins=b64_logins)
 
 
+def cleanup_old_postcards():
+    MAX_POSTCARDS = 10
+
+    # Получаем общее количество открыток
+    total = Postcard.query.count()
+
+    if total > MAX_POSTCARDS:
+        # Находим ID старых открыток, которые нужно удалить
+        old_postcards = (
+            Postcard.query.order_by(Postcard.created_at)
+            .limit(total - MAX_POSTCARDS)
+            .all()
+        )
+
+        # Собираем пути к файлам и ID для удаления
+        postcards_to_delete = []
+        file_paths = []
+
+        for postcard in old_postcards:
+            postcards_to_delete.append(postcard.id)
+            if postcard.image_path:
+                file_paths.append(os.path.join(app.static_folder, postcard.image_path))
+
+        # Удаляем записи из БД
+        Postcard.query.filter(Postcard.id.in_(postcards_to_delete)).delete()
+        db.session.commit()
+
+        # Удаляем файлы
+        for file_path in file_paths:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                app.logger.error(f"Ошибка удаления файла {file_path}: {str(e)}")
+
+        app.logger.info(f"Удалено {len(postcards_to_delete)} старых открыток")
+
+
 def create_card_image(front_text, background, font, color, pos_x, pos_y, font_size=24):
     try:
         # Загрузка фона
@@ -576,6 +625,7 @@ def b64encode_filter(data):
 # Создание базы данных
 with app.app_context():
     db.create_all()
+    cleanup_old_postcards()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)  # Добавьте host='0.0.0.0'
