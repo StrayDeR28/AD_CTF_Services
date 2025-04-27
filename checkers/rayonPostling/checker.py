@@ -217,7 +217,7 @@ def _send_postcard(s, receiver, message, private):
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
     
-    if r.status_code != 302:
+    if r.status_code != 200:
         die(ExitStatus.MUMBLE, f"Unexpected /send_postcard status code {r.status_code}")
     # тут надо найти айди, как конкретно пока хз+++++++++++++++++++++
     # если allow_redirects=False, те нет тела
@@ -272,7 +272,7 @@ def Login(host):
     username1, password1, name1, surname1 = _gen_user()
     _register(s1, username1, password1, name1, surname1)
     _login(s1, username1, password1)
-    r = s1.get("/")
+    r = s1.get("/profile")
     
     if r.status_code != 200:        # а это доступно?
         die(ExitStatus.MUMBLE, f"Failed to access main page after login, status code {r.status_code}")     
