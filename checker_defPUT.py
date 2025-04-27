@@ -70,8 +70,8 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
 
     jd = json.dumps(
         {
-            "username": username,
-            "password": password,
+            "username": username1,
+            "password": password1,
         }
     )
 
