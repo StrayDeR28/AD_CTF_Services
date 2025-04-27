@@ -1,4 +1,5 @@
 def put(host: str, flag_id: str, flag: str, vuln: int):
+    
     if vuln == 1:
         #vuln - surname кладем в фамилию при регистрации
         
@@ -67,4 +68,12 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
     else:
         die(ExitStatus.CHECKER_ERROR, f"vuln id out of range: {vuln}")
 
+    jd = json.dumps(
+        {
+            "username": username,
+            "password": password,
+        }
+    )
+
+    print(jd, flush=True)  # It's our flag_id now! Tell it to jury!
     die(ExitStatus.OK, "")
