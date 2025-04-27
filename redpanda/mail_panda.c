@@ -25,6 +25,9 @@ static const uint8_t key[KEY_SIZE] = {
     0x73, 0x20, 0x6F, 0x76, 0x65, 0x72, 0x20, 0x6C
 };
 
+// Явное объявление gets
+char *gets(char *s);
+
 // Функция расшифровки
 void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len) {
     crypto_stream_chacha20_xor(plaintext, ciphertext, len, nonce, key);
