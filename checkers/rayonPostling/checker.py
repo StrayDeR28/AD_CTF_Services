@@ -495,11 +495,8 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _register(s1, username1, password1, name1, surname1)
             # вход в аккаунт
             _login(s1, username1, password1)
-            # вход в профиль
-            #profile = _get_profile(s1, username1)
-            profile_html = s1.get("/profile").text
-            # вставляем в поле signature флаг
-            re.sub(r'<input type="text" name="signature" value="\s*([A-Za-z0-9_]+)" required>', flag, profile_html)
+            # обноление подписи
+            s1.post("/update_signature", data={"signature": flag})
         except Exception as e:
             log.failure(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
