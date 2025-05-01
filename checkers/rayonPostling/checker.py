@@ -598,7 +598,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             # вход в аккаунт
             _login(s1, username1, password1)
             # обноление подписи
-            s1.post("/update_signature", data={"signature": flag})
+            _set_sign(s1, flag)
         except Exception as e:
             log.failure(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
