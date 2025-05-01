@@ -103,11 +103,12 @@ def _gen_user():
     username = faker.user_name()
     password = faker.password(length=12)
     
+    _log(f"Generated users data: {username}, {password}, {name}, {surname}")
     return username, password, name, surname
 
 # регистрация
 def _register(s, username, password, name, surname):
-    _log("Register user")
+    _log(f"Register user. login: {username}, password: {password}, name: {name}, surname: {surname}")
     try:
         r = s.post(
             "/register",
@@ -761,7 +762,7 @@ def die(code: ExitStatus, msg: str):
 
 def info():
     print("vulns: 1:2:2", flush=True)#surname, signature, postcard text
-    print("timeout: 30", flush=True)
+    print("timeout: 60", flush=True)
     exit(101)
 
 
