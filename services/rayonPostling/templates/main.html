@@ -59,13 +59,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="front_text">Текст на открытке:</label>
-                        <input type="text" id="front_text" name="front_text" required>
+                        <label for="front_text">Текст на открытке*:</label>
+                        <input type="text" id="front_text" name="front_text" required oninput="validateForm()">
                     </div>
 
                     <div class="form-group">
-                        <label for="message">Сообщение внутри:</label>
-                        <textarea id="message" name="message" rows="4"></textarea>
+                        <label for="message">Сообщение внутри*:</label>
+                        <textarea id="message" name="message" rows="4" required oninput="validateForm()"></textarea>
                     </div>
 
                     <div class="form-group">
@@ -83,7 +83,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="button" id="send-btn" class="btn">Отправить</button>
+                        <button type="button" id="send-btn" class="btn" disabled>Отправить</button>
                     </div>
                 </form>
             </div>
@@ -113,7 +113,19 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script>
+    // Функция проверки заполнения обязательных полей
+    function validateForm() {
+        const frontText = document.getElementById('front_text').value.trim();
+        const message = document.getElementById('message').value.trim();
+        const sendBtn = document.getElementById('send-btn');
+
+        sendBtn.disabled = !(frontText.length > 0 && message.length > 0);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        // Инициализация проверки формы
+        validateForm();
+
         // Обновление фона
         document.getElementById('background').addEventListener('change', function () {
             document.querySelector('.card-preview-bg').src = `/static/images/backgrounds/${this.value}`;
@@ -121,6 +133,8 @@
 
         // Обработка отправки формы
         document.getElementById('send-btn').addEventListener('click', async function () {
+            if (this.disabled) return; // Не отправляем, если кнопка неактивна
+
             const form = document.getElementById('card-form');
             const formData = new FormData(form);
             const sendBtn = this;
@@ -146,19 +160,35 @@
                 }
 
                 // Показываем сообщение об успехе
-                // alert('Открытка успешно отправлена!');
-                form.reset(); // Очищаем форму
+                alert('Открытка успешно отправлена!');
+                form.reset();
+                validateForm(); // Снова проверяем форму после сброса
 
             } catch (error) {
                 console.error('Ошибка:', error);
                 alert('Произошла ошибка при отправке: ' + error.message);
             } finally {
-                // Разблокируем кнопку
-                sendBtn.disabled = false;
+                // Разблокируем кнопку (если форма валидна)
                 sendBtn.textContent = 'Отправить';
+                validateForm();
             }
         });
     });
 </script>
 {% endblock %}
+
+<style>
+    /* Добавляем стиль для неактивной кнопки */
+    .btn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    /* Добавляем звездочки к обязательным полям */
+    .form-group label[required]::after {
+        content: " *";
+        color: red;
+    }
+</style>
 {% endblock %}

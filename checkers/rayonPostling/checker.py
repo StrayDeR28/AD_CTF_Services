@@ -18,6 +18,8 @@ import requests
 from faker import Faker
 from pwn import *
 from bs4 import BeautifulSoup
+from PIL import Image
+from io import BytesIO
 
 context.log_level = 'info' #????
 
@@ -217,7 +219,7 @@ def _send_postcard(s, receiver, message, private):
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
     
-    if r.status_code != 302:
+    if r.status_code != 200:
         die(ExitStatus.MUMBLE, f"Unexpected /send_postcard status code {r.status_code}")
     # тут надо найти айди, как конкретно пока хз+++++++++++++++++++++
     # если allow_redirects=False, те нет тела
@@ -256,6 +258,64 @@ def _download_postcard(s, card_id):
         
     return r.content # тип картинка в байтах
 
+def _set_sign(s, sign):
+    try:
+        data = {"signature": sign}
+        r = s.post("/update_signature", data=data, allow_redirects=True)
+    except Exception as e:
+        die(ExitStatus.DOWN, f"Failed to update signature: {e}")
+    if r.status_code != 200:
+        die(ExitStatus.MUMBLE, f"Unexpected update singature status code {r.status_code}")
+
+def _ImgDecrypt(image, _len=40):
+
+    img = Image.open(BytesIO(image))
+
+    try:
+        width = img.size[0]              
+        height = img.size[1]             
+        _h = int(height / 2)            
+        _w = int(width / 2)             
+        pix = img.load()                 
+
+        count = 0
+        lenBits = _len * 8
+        decryptBinMsg = ""
+        
+        while _h < height:
+            for i in range(_w, width):
+                b = pix[i, _h][1]
+
+                if count < lenBits:
+                    if (b % 2) == 1:
+                        decryptBinMsg = decryptBinMsg + "1"
+                        if count == 0:
+                            decryptBinMsg = decryptBinMsg + "b"
+                        count = count + 1
+                    else:
+                        decryptBinMsg = decryptBinMsg + "0"
+                        if count == 0:
+                            decryptBinMsg = decryptBinMsg + "b"
+                        count = count + 1
+                else:
+                    break
+
+            if count < lenBits:
+                _h = _h + 1
+                _w = 0
+            else:
+                break
+
+        m = int(decryptBinMsg, 2)
+        decryptMsg = m.to_bytes((m.bit_length() + 7) // 8, "big").decode(errors='replace')
+        # print(f"Decrypted message: {decryptMsg}", flush=True)
+        return decryptMsg
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+    finally:
+        img.close()
+
 def Register(host):
     _log("Checking registration")
     s1 = FakeSession(host, PORT)
@@ -272,7 +332,7 @@ def Login(host):
     username1, password1, name1, surname1 = _gen_user()
     _register(s1, username1, password1, name1, surname1)
     _login(s1, username1, password1)
-    r = s1.get("/")
+    r = s1.get("/profile")
     
     if r.status_code != 200:        # а это доступно?
         die(ExitStatus.MUMBLE, f"Failed to access main page after login, status code {r.status_code}")     
@@ -437,7 +497,48 @@ def List_of_users_check(host):
 
     if not username1 in logins: # Ищем пользователя среди логинов
         die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}") 
+
+def Signature(host):
+    _log("Checking signature")
+    s1 = FakeSession(host, PORT)
+    s2 = FakeSession(host, PORT)
     
+    username1, password1, name1, surname1 = _gen_user()
+    username2, password2, name2, surname2 = _gen_user()
+
+    _register(s1, username1, password1, name1, surname1)
+    _register(s2, username2, password2, name2, surname2)
+
+    _login(s1, username1, password1)
+    _login(s2, username2, password2)
+    
+    _add_friend(s1, username2)
+    request_id = _get_friend_request_id(s2, username1)
+    _accept_friend(s2, request_id)
+
+    fake = Faker()
+    sign1 = fake.pystr(max_chars=15)
+    sign2 = fake.pystr(max_chars=15)
+
+    _set_sign(s1, sign1)
+    card1_id = _send_postcard(s1, username2, message="aboba", private=False)
+    card1 = _download_postcard(s1, card1_id)
+
+    _set_sign(s1, sign2)
+    card2_id = _send_postcard(s1, username2, message="aboba", private=False)
+    card2 = _download_postcard(s1, card2_id)
+
+    _set_sign(s1, sign1)
+    card3_id = _send_postcard(s1, username2, message="aboba", private=False)
+    card3 = _download_postcard(s1, card3_id)
+
+    get_sign1 = _ImgDecrypt(card1, _len=15)
+    get_sign2 = _ImgDecrypt(card2, _len=15)
+    get_sign3 = _ImgDecrypt(card3, _len=15)
+
+    if not (get_sign1 == get_sign3 and get_sign1 != get_sign2):
+        die(ExitStatus.MUMBLE, f"Signatures not match")
+
 # Основные функции        
 def check(host: str):
     # Проверка всего функционал сервиса, но главное проверить всё, что мы не хотим, чтобы удалили с сервиса.
@@ -461,6 +562,7 @@ def check(host: str):
     #Surname vuln
 
     #Signature vuln
+    Signature(host)
 
     #Postcard message vuln
     postcard_message_check(host)
