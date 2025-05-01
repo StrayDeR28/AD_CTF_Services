@@ -1,9 +1,10 @@
 import random
 from Crypto.Cipher import ChaCha20
-from confluent_kafka import Producer
+from confluent_kafka import Producer, KafkaException
 from confluent_kafka.admin import AdminClient, NewTopic
 
 BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
+
 
 def ImgEncrypt(img, message):
     lenBits = (len(message) * 8) + 1
@@ -65,24 +66,108 @@ def ImgEncrypt(img, message):
 
     return img
 
+
 # Функция создания топика
 def create_topic(login):
+    if not login or not isinstance(login, str):
+        print("Неверный формат логина для создания топика")
+        return False
+
     admin_client = AdminClient({"bootstrap.servers": BROKER})
-    metadata = admin_client.list_topics(timeout=10)
-    # Проверяем, есть ли топик с именем login
-    if not (login in metadata.topics):
-        print(f"Топик '{login}' не существует, создаём...")
-        new_topic = NewTopic(topic=login, num_partitions=1, replication_factor=1)
-        admin_client.create_topics([new_topic]).get(login).result()
-    else:
+
+    # Получаем метаданные с обработкой ошибок
+    try:
+        metadata = admin_client.list_topics(timeout=10)
+    except KafkaException as e:
+        print(f"Ошибка получения списка топиков: {str(e)}")
+        return False
+    except Exception as e:
+        print(f"Неожиданная ошибка при получении метаданных: {str(e)}")
+        return False
+
+    if login in metadata.topics:
         print(f"Топик '{login}' уже существует")
+        return True
+
+    # Создаем новый топик
+    print(f"Создание топика '{login}'...")
+    new_topic = NewTopic(topic=login, num_partitions=1, replication_factor=1)
+
+    # Создание топика с обработкой результата
+    try:
+        futures = admin_client.create_topics([new_topic])
+        # Ожидаем завершения для конкретного топика
+        # futures[login].result(timeout=10)
+        print(f"Топик '{login}' успешно создан")
+        return True
+    except KafkaException as e:
+        print(f"Ошибка создания топика '{login}': {str(e)}")
+        return False
+    except Exception as e:
+        print(f"Неожиданная ошибка при создании топика: {str(e)}")
+        return False
+
+    # # Проверяем, есть ли топик с именем login
+    # if not (login in metadata.topics):
+    #     print(f"Топик '{login}' не существует, создаём...")
+    #     new_topic = NewTopic(topic=login, num_partitions=1, replication_factor=1)
+    #     admin_client.create_topics([new_topic]).get(login).result()
+    # else:
+    #     print(f"Топик '{login}' уже существует")
+    # # print("++")
+
 
 # Функция отправки сообщений
 def send_messages(login, message):
+    # Валидация входных данных
+    if not login or not isinstance(login, str):
+        print("Неверный формат логина топика")
+        return False
+    
+    if not message or not isinstance(message, str):
+        print("Неверный формат сообщения")
+        return False
+    
+    # Сначала проверяем существование топика
+    admin_client = AdminClient({"bootstrap.servers": BROKER})
+    
+    try:
+        metadata = admin_client.list_topics(timeout=10)
+        if login not in metadata.topics:
+            print(f"Топик '{login}' не существует")
+            return False
+    except KafkaException as e:
+        print(f"Ошибка проверки топика '{login}': {str(e)}")
+        return False
+    except Exception as e:
+        print(f"Неожиданная ошибка при проверке топика: {str(e)}")
+        return False
+
     producer = Producer({"bootstrap.servers": BROKER})
-    # for message in messages:
-    producer.produce(topic=login, value=message.encode("utf-8"))
-    producer.flush()
+
+    try:
+        producer.produce(
+            topic=login,
+            value=message.encode("utf-8")
+        )
+        producer.flush(timeout=5)
+        print(f"Сообщение успешно отправлено в топик '{login}'")
+        return True
+    except KafkaException as e:
+        print(f"Ошибка отправки сообщения: {str(e)}")
+        return False
+    except UnicodeEncodeError:
+        print("Ошибка кодирования сообщения")
+        return False
+    except Exception as e:
+        print(f"Неожиданная ошибка при отправке: {str(e)}")
+        return False
+
+    # # for message in messages:
+    # producer.produce(topic=login, value=message.encode("utf-8"))
+    # producer.flush()
+    # # print("--")
+
 
 # Вспомогательные функции
 def generate_signature():
