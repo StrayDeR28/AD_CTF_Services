@@ -96,6 +96,7 @@ class FakeSession(requests.Session):
 
 # Вспомогательные функции
 def _gen_user():
+    _log("Generate user")
     faker = Faker()
     name = faker.first_name()
     surname = faker.last_name()
@@ -106,6 +107,7 @@ def _gen_user():
 
 # регистрация
 def _register(s, username, password, name, surname):
+    _log("Register user")
     try:
         r = s.post(
             "/register",
@@ -124,6 +126,7 @@ def _register(s, username, password, name, surname):
 
 # логирование
 def _login(s, username, password):
+    _log(f"Login under user: {username}, {password}")
     try:
         r = s.post(
             "/login",
@@ -142,6 +145,7 @@ def _login(s, username, password):
 
 # послали запрос в друзья    
 def _add_friend(s, friend_login):
+    _log(f"Add friend: {friend_login}")
     try:
         r = s.post(
             "/send_friend_request",
@@ -156,6 +160,7 @@ def _add_friend(s, friend_login):
 
 # находим это запрос
 def _get_friend_request_id(s, expected_friend_login):
+    _log(f"Get friend request id: {expected_friend_login}")
     try:
         r = s.get("/profile")
     except Exception as e:
@@ -173,6 +178,7 @@ def _get_friend_request_id(s, expected_friend_login):
 
 # принимаем запрос на дружбу
 def _accept_friend(s, request_id):
+    _log(f"Accept friend: {request_id}")
     try:
         r = s.get(f"/accept_friend_request/{request_id}", allow_redirects=False)
     except Exception as e:
@@ -183,6 +189,7 @@ def _accept_friend(s, request_id):
 
 # переходим на профиль друга
 def _get_profile(s, login):
+    _log(f"Get profile for login: {login}")
     try:
         r = s.get(f"/profile/{login}")
     except Exception as e:
@@ -195,11 +202,13 @@ def _get_profile(s, login):
 
 # проверяем что на профиле все есть
 def _verify_profile(profile_html, name, surname):
+    _log(f"Verify profile")
     pattern = r'<h2>\s*({}\s+{})\s*</h2>'.format(re.escape(name), re.escape(surname))
     return bool(re.search(pattern, html.unescape(profile_html)))
 
 # послать открытку
 def _send_postcard(s, receiver, message, private):
+    _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
     try: # уточнить за параметры картинки++++++++++++++++++++++++
         data = {
             "background": "b.png",  # Предполагаемый фон или i,b ?
@@ -234,6 +243,7 @@ def _send_postcard(s, receiver, message, private):
 
 # переход на страницу картинки перед скачиванием, хз возможно не нужно
 def _view_postcard(session, card_id):
+    _log(f"View posctard: card_id: {card_id}")
     try:
         r = session.get(f"/view_card/{card_id}")
     except requests.RequestException as e:
@@ -246,6 +256,7 @@ def _view_postcard(session, card_id):
         
 # скачивание открытки
 def _download_postcard(s, card_id):
+    _log(f"Dowload postcard: {card_id}")
     try:
         r = s.get(f"/download_card/{card_id}")
     except Exception as e:
@@ -259,6 +270,7 @@ def _download_postcard(s, card_id):
     return r.content # тип картинка в байтах
 
 def _set_sign(s, sign):
+    _log(f"Set signature: {sign}")
     try:
         data = {"signature": sign}
         r = s.post("/update_signature", data=data, allow_redirects=True)
@@ -268,7 +280,7 @@ def _set_sign(s, sign):
         die(ExitStatus.MUMBLE, f"Unexpected update singature status code {r.status_code}")
 
 def _ImgDecrypt(image, _len=40):
-
+    _log(f"Image decrypt start")
     img = Image.open(BytesIO(image))
 
     try:
@@ -395,6 +407,7 @@ def Download_postcard_check(host):
 
 # бинарь-уведомления
 def postcard_message_check(host: str):
+    _log(f"Postcard message check")
     try:
         s1 = FakeSession(host, PORT)
         s2 = FakeSession(host, PORT)
