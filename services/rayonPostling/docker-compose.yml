@@ -40,7 +40,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    image: redpandadata/redpanda:v23.1.8
+    image: redpandadata/redpanda:latest
     container_name: redpanda
     command:
       - redpanda
