@@ -116,13 +116,17 @@ def _register(s, username, password, name, surname):
             allow_redirects=False,
         )
     except Exception as e:
+        _log(f"Failed to register: {e}")
         die(ExitStatus.DOWN, f"Failed to register: {e}")
     
     if r.status_code != 302:
+        _log(f"Unexpected /register status code {r.status_code}")
         die(ExitStatus.MUMBLE, f"Unexpected /register status code {r.status_code}")
     if len(r.cookies) == 0:
+        _log(f"No cookies set after registration")
         die(ExitStatus.MUMBLE, "No cookies set after registration")
-    if r.headers.get("Location") != "/login":   #где мы?
+    if r.headers.get("Location") != "/login":
+        _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
         die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
 
 # логирование
