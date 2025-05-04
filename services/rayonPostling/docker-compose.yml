@@ -2,33 +2,29 @@ version: '3.8'
 
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # ports:
-      # - "5000:5000"
+    build: .
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - FLASK_RUN_HOST=0.0.0.0
       - SQLALCHEMY_DATABASE_URI=sqlite:////app/postcards.db
-      - KAFKA_BROKERS=redpanda:9092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       - .:/app:z
       - postcards_data:/app/static/postcards
       - images_data:/app/static/images
     depends_on:
-      - redpanda
-  
+      - redis
+
   caddy:
     image: caddy:latest
     ports:
-     - "5000:5000"
+      - "5000:5000"
     volumes:
-     - ./Caddyfile:/etc/caddy/Caddyfile:z
+      - ./Caddyfile:/etc/caddy/Caddyfile:z
     depends_on:
-     - web
-
+      - web
 
   app:
     build:
@@ -37,31 +33,30 @@ services:
     ports:
       - "31337:31337"
     environment:
-      - KAFKA_BROKERS=redpanda:9092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     restart: always
     depends_on:
-      - redpanda
+      - redis
     volumes:
       - ./rayonPushling/xinetd.conf:/etc/xinetd.d/mail_panda:z
-      
-  redpanda:
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: redis-server --port 6379
+    expose:
+      - "6379"
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "health"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 10
-    image: redpandadata/redpanda:latest
-    container_name: redpanda
-    command:
-      - redpanda
-      - start
-      - --smp 1
-      - --memory 1G
-      - --kafka-addr PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
-    expose:
-      - "9092"
+      retries: 5
+      start_period: 10s
+    volumes:
+      - redis_data:/data
 
 volumes:
   postcards_data:
   images_data:
+  redis_data:

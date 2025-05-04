@@ -132,7 +132,7 @@ def register():
         # Генерируем токен
         token = generate_token(login)
 
-        create_topic(login)
+        # create_topic(login)
 
         # Создаем нового пользователя
         new_user = User(
@@ -295,8 +295,9 @@ def send_friend_request():
     db.session.commit()
 
     msg = f"Пришел запрос в друзья от: {current_user.login}"
-    send_messages(friend_login, msg)
-
+    # send_messages(friend_login, msg)
+    send_notification(friend_login, msg)
+    
     flash("Запрос в друзья отправлен")
     return redirect(url_for("profile"))
 
@@ -425,11 +426,15 @@ def send_postcard():
         cleanup_old_postcards()
 
         # Отправка уведомления
-        send_messages(
+        # send_messages(
+        #     receiver_login,
+        #     f"Новая открытка от {current_user.login}, сообщение: {message}",
+        # )
+        send_notification(
             receiver_login,
             f"Новая открытка от {current_user.login}, сообщение: {message}",
         )
-
+        
         flash("Открытка успешно отправлена!")
         return redirect(url_for(f"view_card", card_id=new_postcard.id))
 

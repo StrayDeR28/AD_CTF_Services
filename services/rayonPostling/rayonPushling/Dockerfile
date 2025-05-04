@@ -5,8 +5,10 @@ RUN apt-get update --fix-missing -o Acquire::http::Timeout=10 \
     && apt-get install -y --no-install-recommends \
     xinetd \
     libsodium23 \
-    librdkafka1 \
+    libhiredis-dev \
     && rm -rf /var/lib/apt/lists/*
+
+RUN touch /var/log/xinetd.log && chmod 666 /var/log/xinetd.log
 
 # Установка рабочей директории
 WORKDIR /app

@@ -3,7 +3,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
+RUN apt-get update
+RUN apt-get install -y \
     gcc \
     libffi-dev \
     libssl-dev \
@@ -12,8 +13,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libfreetype6-dev \
     libpng-dev \
-    fonts-dejavu-core \
-    && rm -rf /var/lib/apt/lists/*
+    fonts-dejavu-core
+RUN rm -rf /var/lib/apt/lists/*
 
 # Установка зависимостей Python
 COPY requirements.txt .
@@ -25,5 +26,9 @@ COPY . .
 # Создание необходимых директорий
 RUN mkdir -p static/postcards static/temp
 
+# Установка переменных окружения для подключения к Redis
+ENV REDIS_HOST=redis
+ENV REDIS_PORT=6379
+
 EXPOSE 5000
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]

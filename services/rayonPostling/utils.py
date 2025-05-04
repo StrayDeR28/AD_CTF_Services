@@ -1,9 +1,30 @@
 import random
 from Crypto.Cipher import ChaCha20
-from confluent_kafka import Producer
-from confluent_kafka.admin import AdminClient, NewTopic
+import redis
+import os
+import json
+import time
 
-BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
+# Подключение к Redis
+redis_host = os.getenv("REDIS_HOST", "localhost")
+redis_port = int(os.getenv("REDIS_PORT", 6379))
+r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+
+def send_notification(login, data):
+    # Формируем уведомление как JSON
+    notification = json.dumps({
+        "data": data,
+        "timestamp": int(time.time())
+    })
+    
+    # Генерируем уникальный ID
+    msg_id = f"{int(time.time())}:{r.incr(f'{login}:msg_counter')}"
+    msg_key = f"{login}:msg:{msg_id}"
+    
+    # Сохраняем с TTL 10 минут
+    r.set(msg_key, notification, ex=600)
+    r.rpush(login, msg_id)
+    print(f"Сохранено уведомление: {msg_key} с данными {notification}")  # Отладка
 
 def ImgEncrypt(img, message):
     lenBits = (len(message) * 8) + 1
@@ -65,24 +86,24 @@ def ImgEncrypt(img, message):
 
     return img
 
-# Функция создания топика
-def create_topic(login):
-    admin_client = AdminClient({"bootstrap.servers": BROKER})
-    metadata = admin_client.list_topics(timeout=10)
-    # Проверяем, есть ли топик с именем login
-    if not (login in metadata.topics):
-        print(f"Топик '{login}' не существует, создаём...")
-        new_topic = NewTopic(topic=login, num_partitions=1, replication_factor=1)
-        admin_client.create_topics([new_topic]).get(login).result()
-    else:
-        print(f"Топик '{login}' уже существует")
+# # Функция создания топика
+# def create_topic(login):
+#     admin_client = AdminClient({"bootstrap.servers": BROKER})
+#     metadata = admin_client.list_topics(timeout=10)
+#     # Проверяем, есть ли топик с именем login
+#     if not (login in metadata.topics):
+#         print(f"Топик '{login}' не существует, создаём...")
+#         new_topic = NewTopic(topic=login, num_partitions=1, replication_factor=1)
+#         admin_client.create_topics([new_topic]).get(login).result()
+#     else:
+#         print(f"Топик '{login}' уже существует")
 
-# Функция отправки сообщений
-def send_messages(login, message):
-    producer = Producer({"bootstrap.servers": BROKER})
-    # for message in messages:
-    producer.produce(topic=login, value=message.encode("utf-8"))
-    producer.flush()
+# # Функция отправки сообщений
+# def send_messages(login, message):
+#     producer = Producer({"bootstrap.servers": BROKER})
+#     # for message in messages:
+#     producer.produce(topic=login, value=message.encode("utf-8"))
+#     producer.flush()
 
 # Вспомогательные функции
 def generate_signature():
