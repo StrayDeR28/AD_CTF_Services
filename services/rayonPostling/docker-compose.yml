@@ -41,8 +41,9 @@ services:
     restart: always
     depends_on:
       - redpanda
-    
-
+    volumes:
+      - ./rayonPushling/xinetd.conf:/etc/xinetd.d/mail_panda:z
+      
   redpanda:
     healthcheck:
       test: ["CMD", "rpk", "cluster", "health"]
