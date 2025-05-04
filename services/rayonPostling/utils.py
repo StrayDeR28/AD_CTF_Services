@@ -5,7 +5,6 @@ from confluent_kafka.admin import AdminClient, NewTopic
 
 BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
 
-
 def ImgEncrypt(img, message):
     lenBits = (len(message) * 8) + 1
     width = img.size[0]
@@ -66,11 +65,9 @@ def ImgEncrypt(img, message):
 
     return img
 
-
 # Функция создания топика
 def create_topic(login):
     admin_client = AdminClient({"bootstrap.servers": BROKER})
-
     metadata = admin_client.list_topics(timeout=10)
     # Проверяем, есть ли топик с именем login
     if not (login in metadata.topics):
@@ -79,8 +76,6 @@ def create_topic(login):
         admin_client.create_topics([new_topic]).get(login).result()
     else:
         print(f"Топик '{login}' уже существует")
-    # print("++")
-
 
 # Функция отправки сообщений
 def send_messages(login, message):
@@ -88,8 +83,6 @@ def send_messages(login, message):
     # for message in messages:
     producer.produce(topic=login, value=message.encode("utf-8"))
     producer.flush()
-    # print("--")
-
 
 # Вспомогательные функции
 def generate_signature():
