@@ -34,16 +34,31 @@ void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len) {
 int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
     size_t hex_len = strlen(hex);
     if (hex_len > 0 && hex[hex_len - 1] == '\n') hex_len--;
+    if (hex_len > 0 && hex[hex_len - 1] == '\r') hex_len--; // Удаляем \r
     if (hex_len % 2 != 0 || hex_len / 2 > bin_size) return -1;
     for (size_t i = 0; i < hex_len / 2; i++) sscanf(hex + (i * 2), "%2hhx", &bin[i]);
     return hex_len / 2;
 }
 
-// Чтение строки до \n, взято из баби нотс
+// Чтение строки до \n или \r\n
 int read_answ(int fd, char* buf, int size) {
     int i;
-    for (i = 0; i < size && read(fd, buf, 1) == 1 && *buf != '\n'; i++, buf++);
-    *buf = 0;
+    char ch;
+    for (i = 0; i < size - 1; i++) {
+        if (read(fd, &ch, 1) != 1) break;
+        if (ch == '\n') break;
+        if (ch == '\r') {
+            // Проверяем, есть ли \n после \r
+            char next_ch;
+            if (read(fd, &next_ch, 1) != 1 || next_ch != '\n') {
+                // Если нет \n, это ошибка
+                break;
+            }
+            break;
+        }
+        buf[i] = ch;
+    }
+    buf[i] = 0;
     return i;
 }
 
@@ -188,7 +203,12 @@ void menu() {
                 break;
             case 2:
                 printf("Goodbye\n");
-                close(STDIN_FILENO);
+                fflush(stdout); // Гарантируем отправку сообщения
+                shutdown(STDOUT_FILENO, SHUT_RDWR); // Принудительное завершение соединения
+                close(STDOUT_FILENO);               // Закрываем stdout
+                close(STDIN_FILENO);                // Закрываем stdin
+                close(STDERR_FILENO); // Закрываем stderr
+                usleep(500000); // Увеличиваем задержку до 0.5 секунды
                 exit(0);
             default:
                 printf("Wrong value!\n");
