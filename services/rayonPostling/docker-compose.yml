@@ -5,8 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
+    # ports:
+      # - "5000:5000"
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
@@ -14,12 +14,21 @@ services:
       - SQLALCHEMY_DATABASE_URI=sqlite:////app/postcards.db
       - KAFKA_BROKERS=redpanda:9092
     volumes:
-      - .:/app
+      - .:/app:z
       - postcards_data:/app/static/postcards
       - images_data:/app/static/images
     depends_on:
       - redpanda
-    
+  
+  caddy:
+    image: caddy:latest
+    ports:
+     - "5000:5000"
+    volumes:
+     - ./Caddyfile:/etc/caddy/Caddyfile:z
+    depends_on:
+     - web
+
 
   app:
     build:
