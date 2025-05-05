@@ -68,7 +68,7 @@ void cleanup(rd_kafka_t *rk) {
         rd_kafka_consumer_close(rk);
         rd_kafka_destroy(rk);
     }
-    exit(0);
+    // exit(0);
 }
 
 // Создание и настройка Kafka-потребителя
@@ -106,6 +106,7 @@ void subscribe_to_topic(rd_kafka_t *rk, const char *topic) {
         printf("Ошибка подписки на топик\n");
         rd_kafka_topic_partition_list_destroy(topics);
         cleanup(rk);
+        return;
     }
     rd_kafka_topic_partition_list_destroy(topics);
 }
@@ -119,6 +120,7 @@ void get_messages() {
     if (rd_kafka_metadata(rk, 0, NULL, (const struct rd_kafka_metadata **)&metadata, 1000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
         printf("Ошибка получения метаданных\n");
         cleanup(rk);
+        return;
     }
     int topic_exists = 0;
     for (int i = 0; i < metadata->topic_cnt; i++) {
@@ -133,6 +135,7 @@ void get_messages() {
     if (!topic_exists) {
         printf("Топик для логина %s не существует\n", login);
         cleanup(rk);
+        return;
     }
 
     // Подписываем потребителя на топик
@@ -149,6 +152,7 @@ void get_messages() {
         printf("Ошибка вычисления смещений\n");
         rd_kafka_topic_partition_list_destroy(offsets);
         cleanup(rk);
+        return;
     }
     // Устанавливаем потребителю начальные смещения для чтения
     rd_kafka_assign(rk, offsets);
@@ -203,12 +207,12 @@ void menu() {
                 break;
             case 2:
                 printf("Goodbye\n");
-                fflush(stdout); // Гарантируем отправку сообщения
-                shutdown(STDOUT_FILENO, SHUT_RDWR); // Принудительное завершение соединения
-                close(STDOUT_FILENO);               // Закрываем stdout
-                close(STDIN_FILENO);                // Закрываем stdin
-                close(STDERR_FILENO); // Закрываем stderr
-                usleep(500000); // Увеличиваем задержку до 0.5 секунды
+                // fflush(stdout); // Гарантируем отправку сообщения
+                // shutdown(STDOUT_FILENO, SHUT_RDWR); // Принудительное завершение соединения
+                // close(STDOUT_FILENO);               // Закрываем stdout
+                // close(STDIN_FILENO);                // Закрываем stdin
+                // close(STDERR_FILENO); // Закрываем stderr
+                // usleep(500000); // Увеличиваем задержку до 0.5 секунды
                 exit(0);
             default:
                 printf("Wrong value!\n");
