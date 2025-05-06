@@ -44,7 +44,7 @@ int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
 int read_answ(int fd, char* buf, int size) {
     int i;
     char ch;
-    for (i = 0; i < size - 1; i++) {
+    for (i = 0; i < size - 1; i++) { // while (1) {
         if (read(fd, &ch, 1) != 1) break;
         if (ch == '\n') break;
         if (ch == '\r') {

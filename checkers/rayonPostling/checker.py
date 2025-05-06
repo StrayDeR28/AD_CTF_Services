@@ -20,6 +20,7 @@ from pwn import *
 from bs4 import BeautifulSoup
 from PIL import Image
 from io import BytesIO
+import secrets # входит в питон
 
 context.log_level = 'info' #????
 
@@ -100,7 +101,10 @@ def _gen_user():
     faker = Faker()
     name = faker.first_name()
     surname = faker.last_name()
-    username = faker.user_name()
+    base_username = faker.user_name()
+    # Исправление: secrets.token_hex вместо secrets()
+    unique_suffix = f"{secrets.token_hex(4)}_{secrets.token_hex(4)}"
+    username = f"{base_username}_{unique_suffix}"
     password = faker.password(length=12)
     
     _log(f"Generated users data: {username}, {password}, {name}, {surname}")
@@ -214,9 +218,9 @@ def _verify_profile(profile_html, name, surname):
 # послать открытку
 def _send_postcard(s, receiver, message, private):
     _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
-    try: # уточнить за параметры картинки++++++++++++++++++++++++
+    try: 
         data = {
-            "background": "b.png",  # Предполагаемый фон или i,b ?
+            "background": "b.png",  # Предполагаемый фон или i,b
             "front_text": "Test postcard",
             "message": message,
             "receiver": receiver,
@@ -235,7 +239,6 @@ def _send_postcard(s, receiver, message, private):
     
     if r.status_code != 200:
         die(ExitStatus.MUMBLE, f"Unexpected /send_postcard status code {r.status_code}")
-    # тут надо найти айди, как конкретно пока хз+++++++++++++++++++++
     # если allow_redirects=False, те нет тела
     # location = r.headers.get("Location")
     # match = re.search(r'/view_card/(\d+)', location)
@@ -258,7 +261,8 @@ def _view_postcard(session, card_id):
     # Проверяем наличие ссылки на скачивание
     if f"/download_card/{card_id}" not in r.text:
         die(ExitStatus.MUMBLE, f"Download link not found in /view_card/{card_id}")
-        
+    return r.text
+    
 # скачивание открытки
 def _download_postcard(s, card_id):
     _log(f"Dowload postcard: {card_id}")
@@ -281,6 +285,7 @@ def _set_sign(s, sign):
         r = s.post("/update_signature", data=data, allow_redirects=True)
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to update signature: {e}")
+    
     if r.status_code != 200:
         die(ExitStatus.MUMBLE, f"Unexpected update singature status code {r.status_code}")
 
@@ -411,7 +416,7 @@ def Download_postcard_check(host):
         die(ExitStatus.MUMBLE, f"Failed to download postcards")
 
 # бинарь-уведомления
-def postcard_message_check(host: str):
+def Postcard_message_check(host: str):
     _log(f"Postcard message check")
     try:
         s1 = FakeSession(host, PORT)
@@ -449,9 +454,12 @@ def postcard_message_check(host: str):
         _log(f"Connecting to mail_panda binary on {host}:31337")
         p = remote(host, 31337)
 
-        p.recvuntil("Введите токен (HEX):")
-        p.sendline(token)
+        p.recvuntil("Введите токен (HEX):".encode('utf-8'))  # строка -> байты
+        p.sendline(token.encode() if isinstance(token, str) else token)
 
+        p.recvuntil(b'2.Exit')  # байтовая строка
+        p.sendline(b'1')
+        
         # Формируем ожидаемую строку
         expected_line = f"Новая открытка от {username2}, сообщение: {test_message}"
 
@@ -583,13 +591,13 @@ def check(host: str):
     Signature(host)
 
     #Postcard message vuln
-    postcard_message_check(host)
+    Postcard_message_check(host)
     
     die(ExitStatus.OK, "Check ALL OK")
 
 
 def put(host: str, flag_id: str, flag: str, vuln: int):
-    postcard_id1, username1, password1
+    # postcard_id1, username1, password1 # что это за хуйня?
 
     if vuln == 1:
         #vuln - surname кладем в фамилию при регистрации
@@ -600,11 +608,10 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             username1, password1, name1, surname1 = _gen_user()
             # ввод флага в поле фамилии
             _register(s1, username1, password1, name1, flag)
+            postcard_id1 = None
         except Exception as e:
             _log(f"Failed to put flag in surname (vuln=1): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
-
-        pass
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профиля в поле
         try:
@@ -617,11 +624,10 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _login(s1, username1, password1)
             # обноление подписи
             _set_sign(s1, flag)
+            postcard_id1 = None
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
-
-        pass
     elif vuln == 3:
         # vuln - postcard text приватное сообщение открытки, прописываем при отправлении открытки
         try:
@@ -646,12 +652,12 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
         except Exception as e:
             _log(f"Failed to put flag in send message (vuln=3): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
-        pass
     else:
         die(ExitStatus.CHECKER_ERROR, f"vuln id out of range: {vuln}")
 
     jd = json.dumps(
         {
+            "flag_id": flag_id, # add
             "username": username1,
             "password": password1,
             "postcard_id": postcard_id1,
@@ -689,7 +695,6 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             _log(f"Failed to get flag from surname (vuln=1): {e}")
             die(ExitStatus.CORRUPT, f"Failed to get flag: {e}")
         
-        pass
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профил¤ в поле
         _log("[Checker GET] Signature vuln 2")
@@ -708,8 +713,6 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
         except Exception as e:
             _log(f"Failed to get flag from signature (vuln=2): {e}")
             die(ExitStatus.CORRUPT, f"Failed to get flag: {e}")
-
-        pass
     elif vuln == 3:
         # vuln - postcard text приватное сообщение открытки, прописываем при отправлении открытки
         _log("[Checker GET] Postcard message vuln 3")
@@ -722,9 +725,9 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             # выбор нужной отправленной открытки в списке своих отправленных
             postcardID = data["postcard_id"]
             # переход на страницу открытки
-            _view_postcard(s1, host, postcardID)
+            postcard_html = _view_postcard(s1, postcardID)
             # вытаскиваем флаг из поля текста открытки
-            soup = BeautifulSoup(profile_html, 'html.parser')
+            soup = BeautifulSoup(postcard_html, 'html.parser')
             outputflag = soup.find(string=flag)
             if outputflag != flag:
                 _log("The flags are not same in postcard message (vuln=3)")
@@ -732,8 +735,7 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
         except Exception as e:
             _log(f"Failed to get flag from postcard message (vuln=3): {e}")
             die(ExitStatus.CORRUPT, f"Failed to get flag: {e}")
-        
-        pass
+                    
     die(ExitStatus.OK, f"All OK! Successfully retrieved a flag from api")
 
 

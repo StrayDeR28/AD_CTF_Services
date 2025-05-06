@@ -111,7 +111,7 @@ class Checker(BaseValidator):
             os.access(self._exe_path, os.X_OK),
             f'{self._exe_path.relative_to(BASE_DIR)} must be executable',
         )
-        self._timeout = 3
+        self._timeout = 30
         self._get_info()
 
     def _get_info(self):
@@ -124,7 +124,7 @@ class Checker(BaseValidator):
         vulns = out.split(": ")[1] # "vulns: x:y:z" -> "x:y:z"
         vulns = map(int, vulns.split(":")) # [x, y, z]
         self._vulns = vulns
-        self._timeout = 3
+        self._timeout = 30
         self._attack_data = False
 
         self._fatal(
