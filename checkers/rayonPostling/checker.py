@@ -13,6 +13,12 @@ import pickle
 from enum import Enum
 from sys import argv
 
+import copy
+os.environ['PWNLIB_NOTERM'] = '1'
+argv = copy.deepcopy(sys.argv)
+
+# юзаем argv
+
 # Make all random more random.
 import requests
 from faker import Faker
@@ -97,22 +103,23 @@ class FakeSession(requests.Session):
 
 # Вспомогательные функции
 def _gen_user():
-    _log("Generate user")
+    # _log("Generate user")
     faker = Faker()
     name = faker.first_name()
     surname = faker.last_name()
-    base_username = faker.user_name()
-    # Исправление: secrets.token_hex вместо secrets()
-    unique_suffix = f"{secrets.token_hex(4)}_{secrets.token_hex(4)}"
-    username = f"{base_username}_{unique_suffix}"
+    # base_username = faker.user_name()
+    # # Исправление: secrets.token_hex вместо secrets()
+    # unique_suffix = f"{secrets.token_hex(4)}_{secrets.token_hex(4)}"
+    # username = f"{base_username}_{unique_suffix}"
     password = faker.password(length=12)
+    username = faker.user_name()
     
-    _log(f"Generated users data: {username}, {password}, {name}, {surname}")
+    # _log(f"Generated users data: {username}, {password}, {name}, {surname}")
     return username, password, name, surname
 
 # регистрация
 def _register(s, username, password, name, surname):
-    _log(f"Register user. login: {username}, password: {password}, name: {name}, surname: {surname}")
+    # _log(f"Register user. login: {username}, password: {password}, name: {name}, surname: {surname}")
     try:
         r = s.post(
             "/register",
@@ -135,7 +142,7 @@ def _register(s, username, password, name, surname):
 
 # логирование
 def _login(s, username, password):
-    _log(f"Login under user: {username}, {password}")
+    # _log(f"Login under user: {username}, {password}")
     try:
         r = s.post(
             "/login",
@@ -154,7 +161,7 @@ def _login(s, username, password):
 
 # послали запрос в друзья    
 def _add_friend(s, friend_login):
-    _log(f"Add friend: {friend_login}")
+    # _log(f"Add friend: {friend_login}")
     try:
         r = s.post(
             "/send_friend_request",
@@ -169,7 +176,7 @@ def _add_friend(s, friend_login):
 
 # находим это запрос
 def _get_friend_request_id(s, expected_friend_login):
-    _log(f"Get friend request id: {expected_friend_login}")
+   # _log(f"Get friend request id: {expected_friend_login}")
     try:
         r = s.get("/profile")
     except Exception as e:
@@ -187,7 +194,7 @@ def _get_friend_request_id(s, expected_friend_login):
 
 # принимаем запрос на дружбу
 def _accept_friend(s, request_id):
-    _log(f"Accept friend: {request_id}")
+    # _log(f"Accept friend: {request_id}")
     try:
         r = s.get(f"/accept_friend_request/{request_id}", allow_redirects=False)
     except Exception as e:
@@ -217,7 +224,7 @@ def _verify_profile(profile_html, name, surname):
 
 # послать открытку
 def _send_postcard(s, receiver, message, private):
-    _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
+    # _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
     try: 
         data = {
             "background": "b.png",  # Предполагаемый фон или i,b
@@ -279,7 +286,7 @@ def _download_postcard(s, card_id):
     return r.content # тип картинка в байтах
 
 def _set_sign(s, sign):
-    _log(f"Set signature: {sign}")
+    # _log(f"Set signature: {sign}")
     try:
         data = {"signature": sign}
         r = s.post("/update_signature", data=data, allow_redirects=True)
@@ -597,25 +604,24 @@ def check(host: str):
 
 
 def put(host: str, flag_id: str, flag: str, vuln: int):
-    # postcard_id1, username1, password1 # что это за хуйня?
+    postcard_id1 = None
 
     if vuln == 1:
         #vuln - surname кладем в фамилию при регистрации
         try:
-            _log("[Checker PUT] Surname vuln")
+            # _log("[Checker PUT] Surname vuln")
             # регистрация пользователя
             s1 = FakeSession(host, PORT)
             username1, password1, name1, surname1 = _gen_user()
             # ввод флага в поле фамилии
             _register(s1, username1, password1, name1, flag)
-            postcard_id1 = None
         except Exception as e:
             _log(f"Failed to put flag in surname (vuln=1): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
     elif vuln == 2:
         # vuln - signature стеганография на открытках, прописываем из профиля в поле
         try:
-            _log("[Checker PUT] Signature vuln")
+            # _log("[Checker PUT] Signature vuln")
             # регистрация пользователя
             s1 = FakeSession(host, PORT)
             username1, password1, name1, surname1 = _gen_user()
@@ -624,14 +630,14 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _login(s1, username1, password1)
             # обноление подписи
             _set_sign(s1, flag)
-            postcard_id1 = None
+            
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
     elif vuln == 3:
         # vuln - postcard text приватное сообщение открытки, прописываем при отправлении открытки
         try:
-            _log("[Checker PUT] Postcard message vuln")
+            # _log("[Checker PUT] Postcard message vuln")
             # создаем 2 пользователя
             s1 = FakeSession(host, PORT)
             s2 = FakeSession(host, PORT)
@@ -657,7 +663,6 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
 
     jd = json.dumps(
         {
-            "flag_id": flag_id, # add
             "username": username1,
             "password": password1,
             "postcard_id": postcard_id1,
@@ -670,7 +675,9 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
 
 def get(host: str, flag_id: str, flag: str, vuln: int):
     try:
+        _log(f"flag_id in get: {flag_id}")
         data = json.loads(flag_id)
+        _log(f"data in get: {data}")
         if not data:
             raise ValueError
     except:
@@ -688,6 +695,8 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             # вытаскиваем из поля surname флаг
             soup = BeautifulSoup(profile_html, 'html.parser')
             outputflag = soup.find(string=flag)
+            _log(f"outputflag {outputflag}")
+            _log(f"flag {flag}")
             if outputflag != flag:
                 _log("The flags are not same in surname (vuln=1)")
                 die(ExitStatus.CORRUPT, f"Failed to get flag")
@@ -773,25 +782,45 @@ def info():
 
 
 def _main():
+    # _log(f"Received arguments: {argv}, length: {len(argv)}\n")
     try:
         cmd = argv[1]
         hostname = argv[2]
-        if cmd == "get":
+        if cmd == "put":
+            if len(argv) != 6:
+                raise IndexError(f"Expected 6 arguments for put, got {len(argv)}")
             fid, flag, vuln = argv[3], argv[4], int(argv[5])
-            get(hostname, fid, flag, vuln)
-        elif cmd == "put":
-            fid, flag, vuln = argv[3], argv[4], int(argv[5])
+            # _log(f"Calling put with: hostname={hostname}, fid={fid}, flag={flag}, vuln={vuln}")
             put(hostname, fid, flag, vuln)
+        elif cmd == "get":
+            if len(argv) != 6:
+                raise IndexError(f"Expected 6 arguments for get, got {len(argv)}")
+            fid, flag, vuln = argv[3], argv[4], int(argv[5])
+            _log(f"Calling get with: hostname={hostname}, fid={fid}, flag={flag}, vuln={vuln}======")
+            get(hostname, fid, flag, vuln)
         elif cmd == "check":
             check(hostname)
         elif cmd == "info":
             info()
         else:
-            raise IndexError
-    except IndexError:
+            raise ValueError(f"Unknown command: {cmd}")
+    except IndexError as e:
+        _log(f"IndexError: {e}")
         die(
             ExitStatus.CHECKER_ERROR,
             f"Usage: {argv[0]} check|put|get IP FLAGID FLAG VULN",
+        )
+    except ValueError as e:
+        _log(f"ValueError: {e}")
+        die(
+            ExitStatus.CHECKER_ERROR,
+            f"Usage: {argv[0]} check|put|get IP FLAGID FLAG VULN",
+        )
+    except Exception as e:
+        _log(f"Unexpected error: {e}")
+        die(
+            ExitStatus.CHECKER_ERROR,
+            f"Checker error: {e}",
         )
 
 

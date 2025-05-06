@@ -20,6 +20,9 @@ from typing import List, Tuple
 import yaml
 from dockerfile_parse import DockerfileParser
 
+
+import shlex
+
 BASE_DIR = Path(__file__).resolve().absolute().parent
 SERVICES_PATH = BASE_DIR / 'services'
 CHECKERS_PATH = BASE_DIR / 'checkers'
@@ -111,7 +114,7 @@ class Checker(BaseValidator):
             os.access(self._exe_path, os.X_OK),
             f'{self._exe_path.relative_to(BASE_DIR)} must be executable',
         )
-        self._timeout = 30
+        self._timeout = 15
         self._get_info()
 
     def _get_info(self):
@@ -124,7 +127,7 @@ class Checker(BaseValidator):
         vulns = out.split(": ")[1] # "vulns: x:y:z" -> "x:y:z"
         vulns = map(int, vulns.split(":")) # [x, y, z]
         self._vulns = vulns
-        self._timeout = 30
+        self._timeout = 15
         self._attack_data = False
 
         self._fatal(
@@ -141,9 +144,9 @@ class Checker(BaseValidator):
         }
 
     def _run_command(self, command: List[str], env=None) -> Tuple[str, str]:
+        # self._log(f'Formed command _run_command: {command}')
         action = command[1].upper()
-        cmd = ['timeout', str(self._timeout)] + command
-
+        cmd = ['timeout', str(self._timeout)] + command        
         start = time.monotonic()
         p = subprocess.run(cmd, capture_output=True, check=False, env=env)
         elapsed = time.monotonic() - start
@@ -169,7 +172,15 @@ class Checker(BaseValidator):
 
     def put(self, flag: str, flag_id: str, vuln: int):
         self._log(f'running PUT, flag={flag} flag_id={flag_id} vuln={vuln}')
-        cmd = [str(self._exe_path), 'put', HOST, flag_id, flag, str(vuln)]
+        cmd = [
+            str(self._exe_path),
+            'put',
+            HOST,
+            shlex.quote(flag_id),
+            shlex.quote(flag),
+            str(vuln)
+        ]
+        self._log(f'Formed command: {cmd}')
         out, err = self._run_command(cmd)
 
         self._fatal(out, 'stdout is empty')
