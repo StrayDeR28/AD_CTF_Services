@@ -694,10 +694,11 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             profile_html = s1.get("/profile").text
             # вытаскиваем из поля surname флаг
             soup = BeautifulSoup(profile_html, 'html.parser')
-            outputflag = soup.find(string=flag)
-            _log(f"outputflag {outputflag}")
-            _log(f"flag {flag}")
-            if outputflag != flag:
+            page_text = soup.get_text()
+            # _log(f"page_text: {page_text}")
+            # _log(f"flag: {flag}")
+            
+            if flag not in page_text:
                 _log("The flags are not same in surname (vuln=1)")
                 die(ExitStatus.CORRUPT, f"Failed to get flag")
         except Exception as e:
@@ -715,7 +716,16 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
             profile_html = s1.get("/profile").text
             # вытаскиваем из поля signature флаг
             soup = BeautifulSoup(profile_html, 'html.parser')
-            outputflag = soup.find(string=flag)
+            # Ищем <input name="signature">
+            signature_input = soup.find('input', {'name': 'signature'})
+            if not signature_input:
+                _log("No input element with name='signature' found")
+                die(ExitStatus.CORRUPT, "No signature input found in profile")
+
+            outputflag = signature_input.get('value')
+            # _log(f"outputflag: {outputflag}")
+            # _log(f"flag: {flag}")
+
             if outputflag != flag:
                 _log("The flags are not same in signature (vuln=2)")
                 die(ExitStatus.CORRUPT, f"Failed to get flag")
@@ -777,7 +787,7 @@ def die(code: ExitStatus, msg: str):
 
 def info():
     print("vulns: 1:2:2", flush=True)#surname, signature, postcard text
-    print("timeout: 60", flush=True)
+    #print("timeout: 60", flush=True)# ломает чекер на пут гет
     exit(101)
 
 
@@ -796,7 +806,7 @@ def _main():
             if len(argv) != 6:
                 raise IndexError(f"Expected 6 arguments for get, got {len(argv)}")
             fid, flag, vuln = argv[3], argv[4], int(argv[5])
-            _log(f"Calling get with: hostname={hostname}, fid={fid}, flag={flag}, vuln={vuln}======")
+            _log(f"Calling get with: hostname={hostname}, fid={fid}, flag={flag}, vuln={vuln}")
             get(hostname, fid, flag, vuln)
         elif cmd == "check":
             check(hostname)
