@@ -563,18 +563,19 @@ def List_of_users_check(host):
         die(ExitStatus.MUMBLE, f"Failed to access users page after login, status code {r.status_code}")
     # начинаем искать пользователей
     soup = BeautifulSoup(r.text, 'html.parser')
+    logins = []
+    
+    # Ищем div со стилем display:none
+    hidden_div = soup.find("div", {"style": "display:none"})
+    if hidden_div:
+        # Получаем текст из div и разбиваем его по запятым
+        users_text = hidden_div.text.strip()
+        logins = [login.strip() for login in users_text.split(",") if login.strip()]
+    else:
+        die(ExitStatus.MUMBLE, "Hidden users div not found")
 
-    # Попробуем найти логины в <span class="hidden" data-users="...">
-    #    <div style="display:none">
-    hidden_users = soup.find("div", {"style": "display:none"})
-    if hidden_users:
-        try:
-            logins = [login.strip() for login in hidden_users.split(",") if login.strip()]
-        except Exception as e:
-            _log(f"[!] Не удалось распарсить логины из data-users: {e}")
-
-    if not username1 in logins: # Ищем пользователя среди логинов
-        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}") 
+    if not username1 in logins:
+        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}")
 
 def Signature(host):
     _log("Checking signature")
