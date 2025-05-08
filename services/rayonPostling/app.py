@@ -20,7 +20,7 @@ from models import db, User, Friend, Postcard
 from PIL import Image, ImageDraw, ImageFont
 import base64
 from datetime import datetime
-from utils import *
+from services.rayonPostling.utils import *
 
 POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
