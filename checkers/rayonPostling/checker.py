@@ -271,6 +271,7 @@ def _verify_profile(profile_html, name, surname):
 # послать открытку
 def _send_postcard(s, receiver, message, private):
     # _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
+    rand_color = secrets.token.hex(6)
     try: 
         data = {
             "background": f"{random.randint(0, 18)}.png", 
@@ -280,7 +281,7 @@ def _send_postcard(s, receiver, message, private):
             #"font_size":"24",
             "pos_x": "200",
             "pos_y": "200",
-            "color": "#000000",
+            "color": f"#{rand_color}",
             "font": "Arial",
             "is_private":"off"
         }
