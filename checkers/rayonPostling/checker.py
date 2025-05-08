@@ -178,6 +178,7 @@ def _register(s, username, password, name, surname):
     
     if r.status_code != 302:
         _log(f"Unexpected /register status code {r.status_code}")
+        _log(f"{r.text}")
         die(ExitStatus.MUMBLE, f"Unexpected /register status code {r.status_code}")
     if len(r.cookies) == 0:
         _log(f"No cookies set after registration")
