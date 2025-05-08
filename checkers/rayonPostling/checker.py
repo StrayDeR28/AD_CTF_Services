@@ -288,7 +288,6 @@ def _send_postcard(s, receiver, message, private):
         if private:
             data["is_private"] = "on"
             
-        _log(f"Postcard color: #{rand_color}")
         r = s.post("/send_postcard", data=data, allow_redirects=True)
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
