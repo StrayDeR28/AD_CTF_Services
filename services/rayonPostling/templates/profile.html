@@ -17,7 +17,8 @@
         <div class="profile-left">
             <!-- Аватарка -->
             <div class="profile-avatar">
-                <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="Аватар">
+                <img src="{{ url_for('static', filename='images/avatars/' ~ range(0, 5)|random ~ '.png') }}"
+                    alt="Аватар">
             </div>
 
             <!-- Слайдер друзей -->
@@ -28,7 +29,8 @@
                         {% for friend in friends %}
                         <div class="slide">
                             <a href="{{ url_for('friend_profile', login=friend.login) }}">
-                                <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="{{ friend.login }}">
+                                <img src="{{ url_for('static', filename='images/avatars/' ~ range(0, 5)|random ~ '.png') }}"
+                                    alt="{{ friend.login }}">
                                 <span>{{ friend.login }}</span>
                             </a>
                         </div>
@@ -48,8 +50,10 @@
                     <li>
                         <span>{{ request.friend1_login }}</span>
                         <div>
-                            <a href="{{ url_for('accept_friend_request', request_id=request.id) }}" class="btn-small">✓</a>
-                            <a href="{{ url_for('reject_friend_request', request_id=request.id) }}" class="btn-small">✕</a>
+                            <a href="{{ url_for('accept_friend_request', request_id=request.id) }}"
+                                class="btn-small">✓</a>
+                            <a href="{{ url_for('reject_friend_request', request_id=request.id) }}"
+                                class="btn-small">✕</a>
                         </div>
                     </li>
                     {% endfor %}
@@ -155,9 +159,9 @@
         scrollbar-width: none;
     }
 
-        .slider-track::-webkit-scrollbar {
-            display: none;
-        }
+    .slider-track::-webkit-scrollbar {
+        display: none;
+    }
 
     .slide {
         flex: 0 0 auto;
@@ -165,19 +169,19 @@
         width: 80px;
     }
 
-        .slide img {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #4CAF50;
-        }
+    .slide img {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #4CAF50;
+    }
 
-        .slide span {
-            display: block;
-            margin-top: 5px;
-            font-size: 12px;
-        }
+    .slide span {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+    }
 
     .slider-btn {
         position: absolute;
@@ -191,17 +195,17 @@
         z-index: 1;
     }
 
-        .slider-btn.prev {
-            left: -10px;
-        }
+    .slider-btn.prev {
+        left: -10px;
+    }
 
-        .slider-btn.next {
-            right: -10px;
-        }
+    .slider-btn.next {
+        right: -10px;
+    }
 
-        .slider-btn:hover {
-            color: #4CAF50;
-        }
+    .slider-btn:hover {
+        color: #4CAF50;
+    }
 </style>
 
 <script>
