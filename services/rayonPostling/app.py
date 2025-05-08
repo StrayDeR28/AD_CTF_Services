@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw, ImageFont
 import base64
 from datetime import datetime
 from utils import *
+import secrets
 
 POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
@@ -387,12 +388,13 @@ def send_postcard():
         filename = f"postcard_{current_user.login}_{timestamp}.png"
         filepath = os.path.join(POSTCARDS_FOLDER, filename)
 
+        rand_color = secrets.token.hex(6)
         # Создаем и сохраняем изображение
         img = create_card_image(
             front_text,
             background,
             request.form.get("font", "Arial"),
-            request.form.get("color", "#000000"),
+            request.form.get("color", f"#{rand_color}"),
             int(request.form.get("pos_x", 50)),
             int(request.form.get("pos_y", 50)),
             int(request.form.get("font_size", 24)),
