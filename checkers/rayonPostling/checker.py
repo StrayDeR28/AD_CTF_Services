@@ -279,7 +279,7 @@ def _send_postcard(s, receiver, message, private):
             "message": message,
             "receiver": receiver,
             #"font_size":"24",
-            "pos_x": "200",
+            "pos_x": "50",
             "pos_y": "200",
             "color": f"#{rand_color}",
             "font": "Arial",
