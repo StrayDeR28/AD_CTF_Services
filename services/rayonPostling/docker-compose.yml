@@ -55,8 +55,8 @@ services:
     command:
       - redpanda
       - start
-      - --smp 1
-      - --memory 2G
+      - --smp 2 # 2000parts/2000topiks 150run+-750topiks
+      - --memory 2G #сломалось на 1
       - --kafka-addr PLAINTEXT://0.0.0.0:9092
       - --advertise-kafka-addr PLAINTEXT://redpanda:9092
     expose:
