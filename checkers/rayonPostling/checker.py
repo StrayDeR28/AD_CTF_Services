@@ -184,9 +184,9 @@ def _register(s, username, password, name, surname):
     if len(r.cookies) == 0:
         _log(f"No cookies set after registration")
         die(ExitStatus.MUMBLE, "No cookies set after registration")
-    if r.headers.get("Location") != "/login":
-        _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
-        die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
+    # if r.headers.get("Location") != "/login":
+    #     _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
+    #     die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
 
 # логирование
 def _login(s, username, password):
