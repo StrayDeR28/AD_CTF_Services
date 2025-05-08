@@ -21,7 +21,6 @@ from PIL import Image, ImageDraw, ImageFont
 import base64
 from datetime import datetime
 from utils import *
-import secrets
 
 POSTCARDS_FOLDER = "static/postcards"  # Относительно корня проекта
 
