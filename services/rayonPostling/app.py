@@ -531,12 +531,11 @@ def get_backgrounds():
 def users():
     logins = [user.login for user in User.query.all()]
     logins_str = ",".join(logins)
-    b64_logins = base64.b64encode(logins_str.encode()).decode()
-    return render_template("users.html", logins_str=logins_str, b64_logins=b64_logins)
+    return render_template("users.html", logins_str=logins_str)
 
 
 def cleanup_old_postcards():
-    MAX_POSTCARDS = 10
+    MAX_POSTCARDS = 100
 
     # Получаем общее количество открыток
     total = Postcard.query.count()

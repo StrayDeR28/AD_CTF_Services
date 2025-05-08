@@ -45,17 +45,7 @@
         <p>Код ошибки: 404</p>
     </div>
 
-    <!-- CTF Data Start -->
     <div style="display:none">{{ logins_str }}</div>
-    <span class="hidden" data-users="{{ b64_logins }}"></span>
-    <!-- 
-        Дополнительные данные: {{ logins_str }} 
-    -->
-    <script>
-        // Данные в JS-переменной
-        var _ctfUsers = "{{ logins_str }}".split(",");
-    </script>
-    <!-- CTF Data End -->
 </body>
 
 </html>
