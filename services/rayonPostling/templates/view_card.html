@@ -21,8 +21,7 @@
     {% endif %}
 
     <div class="card-info">
-        <p>Отправитель: <a href="{{ url_for('friend_profile', login=postcard.sender_login) }}">{{ sender.name }} {{
-                sender.surname }}</a></p>
+        <p>Отправитель: <a href="{{ url_for('friend_profile', login=postcard.sender_login) }}">{{ sender.login }}</a></p>
         <p>Дата отправки: {{ postcard.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
         <!-- Добавлено: информация о шрифте -->
         <!-- <p>Использован шрифт: {{ postcard.font_used or 'Arial' }}</p> -->

@@ -271,6 +271,7 @@ def _verify_profile(profile_html, name, surname):
 # послать открытку
 def _send_postcard(s, receiver, message, private):
     # _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
+    rand_color = secrets.token_hex(3)
     try: 
         data = {
             "background": f"{random.randint(0, 18)}.png", 
@@ -278,14 +279,16 @@ def _send_postcard(s, receiver, message, private):
             "message": message,
             "receiver": receiver,
             #"font_size":"24",
-            "pos_x": "200",
+            "pos_x": "50",
             "pos_y": "200",
-            "color": "#000000",
+            "color": f"#{rand_color}",
             "font": "Arial",
             "is_private":"off"
         }
         if private:
             data["is_private"] = "on"
+            
+        _log(f"Postcard color: #{rand_color}")
         r = s.post("/send_postcard", data=data, allow_redirects=True)
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
@@ -298,7 +301,7 @@ def _send_postcard(s, receiver, message, private):
 
     match = re.search(r'/download_card/(\d+)', r.text)
     if not match:
-        die(ExitStatus.MUMBLE, "Failed to extract postcard ID")
+        die(ExitStatus.MUMBLE, f"Failed to extract postcard ID, color was: {rand_color}")
     
     return int(match.group(1))
 
@@ -563,19 +566,19 @@ def List_of_users_check(host):
         die(ExitStatus.MUMBLE, f"Failed to access users page after login, status code {r.status_code}")
     # начинаем искать пользователей
     soup = BeautifulSoup(r.text, 'html.parser')
+    logins = []
+    
+    # Ищем div со стилем display:none
+    hidden_div = soup.find("div", {"style": "display:none"})
+    if hidden_div:
+        # Получаем текст из div и разбиваем его по запятым
+        users_text = hidden_div.text.strip()
+        logins = [login.strip() for login in users_text.split(",") if login.strip()]
+    else:
+        die(ExitStatus.MUMBLE, "Hidden users div not found")
 
-    # Попробуем найти логины в <span class="hidden" data-users="...">
-    hidden_span = soup.find("span", {"class": "hidden", "data-users": True})
-    if hidden_span:
-        try:
-            b64_data = hidden_span["data-users"]
-            decoded = base64.b64decode(b64_data).decode()
-            logins = [login.strip() for login in decoded.split(",") if login.strip()]
-        except Exception as e:
-            _log(f"[!] Не удалось распарсить логины из data-users: {e}")
-
-    if not username1 in logins: # Ищем пользователя среди логинов
-        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}") 
+    if not username1 in logins:
+        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}")
 
 def Signature(host):
     _log("Checking signature")

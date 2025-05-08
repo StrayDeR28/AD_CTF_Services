@@ -11,7 +11,7 @@
     <div class="user-info">
         <div
             class="user-avatar {% if is_friend or user.login == current_user.login %}friend-avatar{% else %}stranger-avatar{% endif %}">
-            <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="Аватар">
+            <img src="{{ url_for('static', filename='images/avatars/' ~ range(0, 5)|random ~ '.png') }}" alt="Аватар">
             {% if not is_friend and user.login != current_user.login %}
             <div class="avatar-overlay">?</div>
             {% endif %}
