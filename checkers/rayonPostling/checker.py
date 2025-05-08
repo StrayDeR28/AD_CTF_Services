@@ -565,12 +565,11 @@ def List_of_users_check(host):
     soup = BeautifulSoup(r.text, 'html.parser')
 
     # Попробуем найти логины в <span class="hidden" data-users="...">
-    hidden_span = soup.find("span", {"class": "hidden", "data-users": True})
-    if hidden_span:
+    #    <div style="display:none">
+    hidden_users = soup.find("div", {"style": "display:none"})
+    if hidden_users:
         try:
-            b64_data = hidden_span["data-users"]
-            decoded = base64.b64decode(b64_data).decode()
-            logins = [login.strip() for login in decoded.split(",") if login.strip()]
+            logins = [login.strip() for login in hidden_users.split(",") if login.strip()]
         except Exception as e:
             _log(f"[!] Не удалось распарсить логины из data-users: {e}")
 
