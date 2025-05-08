@@ -287,6 +287,8 @@ def _send_postcard(s, receiver, message, private):
         }
         if private:
             data["is_private"] = "on"
+            
+        _log(f"Postcard color: #{rand_color}")
         r = s.post("/send_postcard", data=data, allow_redirects=True)
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
@@ -299,7 +301,7 @@ def _send_postcard(s, receiver, message, private):
 
     match = re.search(r'/download_card/(\d+)', r.text)
     if not match:
-        die(ExitStatus.MUMBLE, "Failed to extract postcard ID")
+        die(ExitStatus.MUMBLE, f"Failed to extract postcard ID, color was: {rand_color}")
     
     return int(match.group(1))
 
