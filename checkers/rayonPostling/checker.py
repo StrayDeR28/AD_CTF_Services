@@ -236,6 +236,7 @@ def _get_friend_request_id(s, expected_friend_login):
     pattern = r'<span>{}</span>[^<]*<div>[^<]*<a href="/accept_friend_request/(\d+)"'.format(re.escape(expected_friend_login))
     match = re.search(pattern, html.unescape(r.text), re.DOTALL)
     if not match:
+        _log(f"Request text: {r.text}, {r}")
         die(ExitStatus.MUMBLE, "No friend request found in profile")
     # возвращаем первый айди для нашего друга
     return match.group(1)   
