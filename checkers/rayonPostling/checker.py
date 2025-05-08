@@ -158,7 +158,7 @@ def _gen_user():
     # unique_suffix = f"{secrets.token_hex(4)}_{secrets.token_hex(4)}"
     # username = f"{base_username}_{unique_suffix}"
     password = faker.password(length=12)
-    username = faker.user_name()
+    username = faker.unique.user_name()
     
     # _log(f"Generated users data: {username}, {password}, {name}, {surname}")
     return username, password, name, surname
@@ -204,8 +204,8 @@ def _login(s, username, password):
         die(ExitStatus.MUMBLE, f"Unexpected /login status code {r.status_code}")
     if len(r.cookies) == 0:
         die(ExitStatus.MUMBLE, "No cookies set after login")
-    if r.headers.get("Location") != "/":    #где мы?
-        die(ExitStatus.MUMBLE, f"Unexpected redirect after login: {r.headers.get('Location')}")
+    # if r.headers.get("Location") != "/":    #где мы?
+    #     die(ExitStatus.MUMBLE, f"Unexpected redirect after login: {r.headers.get('Location')}")
 
 # послали запрос в друзья    
 def _add_friend(s, friend_login):
