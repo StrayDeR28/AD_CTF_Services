@@ -576,6 +576,8 @@ def List_of_users_check(host):
         users_text = hidden_div.text.strip()
         logins = [login.strip() for login in users_text.split(",") if login.strip()]
     else:
+        _log(f"Request text: {r.text}, {r}")
+        _log(f"Soup text: {soup}")
         die(ExitStatus.MUMBLE, "Hidden users div not found")
 
     if not username1 in logins:
