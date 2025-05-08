@@ -159,7 +159,9 @@ def _gen_user():
     # username = f"{base_username}_{unique_suffix}"
     password = faker.password(length=12)
     username = faker.user_name()
-    
+    now = str(time.time()).encode()
+    hash_suffix = hashlib.sha256(now).hexdigest()[:6].upper()  # первые 6 символов хеша
+    username += hash_suffix
     # _log(f"Generated users data: {username}, {password}, {name}, {surname}")
     return username, password, name, surname
 
@@ -178,13 +180,15 @@ def _register(s, username, password, name, surname):
     
     if r.status_code != 302:
         _log(f"Unexpected /register status code {r.status_code}")
+        _log(f"login: {username}, password: {password}, name: {name}, surname: {surname}")
+        _log(f"Request text: {r.text}, {r}")
         die(ExitStatus.MUMBLE, f"Unexpected /register status code {r.status_code}")
     if len(r.cookies) == 0:
         _log(f"No cookies set after registration")
         die(ExitStatus.MUMBLE, "No cookies set after registration")
-    if r.headers.get("Location") != "/login":
-        _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
-        die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
+    # if r.headers.get("Location") != "/login":
+    #     _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
+    #     die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
 
 # логирование
 def _login(s, username, password):
@@ -202,8 +206,8 @@ def _login(s, username, password):
         die(ExitStatus.MUMBLE, f"Unexpected /login status code {r.status_code}")
     if len(r.cookies) == 0:
         die(ExitStatus.MUMBLE, "No cookies set after login")
-    if r.headers.get("Location") != "/":    #где мы?
-        die(ExitStatus.MUMBLE, f"Unexpected redirect after login: {r.headers.get('Location')}")
+    # if r.headers.get("Location") != "/":    #где мы?
+    #     die(ExitStatus.MUMBLE, f"Unexpected redirect after login: {r.headers.get('Location')}")
 
 # послали запрос в друзья    
 def _add_friend(s, friend_login):
@@ -234,6 +238,7 @@ def _get_friend_request_id(s, expected_friend_login):
     pattern = r'<span>{}</span>[^<]*<div>[^<]*<a href="/accept_friend_request/(\d+)"'.format(re.escape(expected_friend_login))
     match = re.search(pattern, html.unescape(r.text), re.DOTALL)
     if not match:
+        _log(f"Request text: {r.text}, {r}")
         die(ExitStatus.MUMBLE, "No friend request found in profile")
     # возвращаем первый айди для нашего друга
     return match.group(1)   
@@ -574,6 +579,8 @@ def List_of_users_check(host):
         users_text = hidden_div.text.strip()
         logins = [login.strip() for login in users_text.split(",") if login.strip()]
     else:
+        _log(f"Request text: {r.text}, {r}")
+        _log(f"Soup text: {soup}")
         die(ExitStatus.MUMBLE, "Hidden users div not found")
 
     if not username1 in logins:

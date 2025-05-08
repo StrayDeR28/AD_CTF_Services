@@ -1,4 +1,6 @@
 import random
+import hashlib
+import time
 from Crypto.Cipher import ChaCha20
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
@@ -94,8 +96,12 @@ def generate_signature():
         "Волшебный",
     ]
     nouns = ["Друг", "Творец", "Художник", "Писатель", "Мечтатель"]
-    numbers = random.randint(100, 999)
-    return f"{random.choice(adjectives)} {random.choice(nouns)} #{numbers}"
+    
+    # Получаем текущее время и хешируем
+    now = str(time.time()).encode()
+    hash_suffix = hashlib.sha256(now).hexdigest()[:6].upper()  # первые 6 символов хеша
+
+    return f"{random.choice(adjectives)} {random.choice(nouns)} #{hash_suffix}"
 
 
 def generate_famous_signature():
