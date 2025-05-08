@@ -158,8 +158,10 @@ def _gen_user():
     # unique_suffix = f"{secrets.token_hex(4)}_{secrets.token_hex(4)}"
     # username = f"{base_username}_{unique_suffix}"
     password = faker.password(length=12)
-    username = faker.unique.user_name()
-    
+    username = faker.user_name()
+    now = str(time.time()).encode()
+    hash_suffix = hashlib.sha256(now).hexdigest()[:6].upper()  # первые 6 символов хеша
+    username += hash_suffix
     # _log(f"Generated users data: {username}, {password}, {name}, {surname}")
     return username, password, name, surname
 
