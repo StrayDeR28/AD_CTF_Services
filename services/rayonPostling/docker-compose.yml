@@ -44,8 +44,7 @@ services:
     volumes:
       - ./rayonPushling/xinetd.conf:/etc/xinetd.d/mail_panda:z
       
-  # smp 1 это 1000parts/1000topiks 150run+-750topiks
-  # memory сломалось на 1
+  # smp 1 это 1000parts/1000topiks
   redpanda:
     healthcheck:
       test: ["CMD", "rpk", "cluster", "health"]
