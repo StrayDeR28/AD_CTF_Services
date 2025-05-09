@@ -44,6 +44,8 @@ services:
     volumes:
       - ./rayonPushling/xinetd.conf:/etc/xinetd.d/mail_panda:z
       
+  # smp 1 это 1000parts/1000topiks 150run+-750topiks
+  # memory сломалось на 1
   redpanda:
     healthcheck:
       test: ["CMD", "rpk", "cluster", "health"]
@@ -52,13 +54,15 @@ services:
       retries: 10
     image: redpandadata/redpanda:latest
     container_name: redpanda
-    command:
-      - redpanda
-      - start
-      - --smp 2 # 2000parts/2000topiks 150run+-750topiks
-      - --memory 2G #сломалось на 1
-      - --kafka-addr PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    command: >
+      redpanda start
+      --smp 1 
+      --memory 1G
+      --kafka-addr PLAINTEXT://0.0.0.0:9092
+      --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      --check=false
+      && sleep 5
+      && rpk topic create user-messages --config retention.ms=600000 --config segment.ms=60000 --config segment.bytes=150000 --partitions 1 --replicas 1 || true
     expose:
       - "9092"
 

@@ -4,9 +4,10 @@ import time
 from Crypto.Cipher import ChaCha20
 from confluent_kafka import Producer, KafkaException
 from confluent_kafka.admin import AdminClient, NewTopic
-import re
+import json
 
 BROKER = "redpanda:9092"  # Вместо localhost используем имя сервиса из docker-compose
+TOPIC = "user-messages"   # Единый топик
 
 def ImgEncrypt(img, message):
     lenBits = (len(message) * 8) + 1
@@ -87,18 +88,7 @@ def ImgEncrypt(img, message):
 #     producer.produce(topic=login, value=message.encode("utf-8"))
 #     producer.flush()
 
-# в принципе можно просто оставить старую функцию отправки сообщений, 
-# она автоматически сделает топик, 
-# но в кафке вроде как есть подводные камни, так что для чистоты
-def send_messages(login: str, message: str):
-    # Проверка корректности имени топика (буквы, цифры, дефис, подчёркивание, точка)
-    # Также есть ограничения по длине:
-        # По умолчанию: максимум 249 символов (kafka.topic.max.message.bytes влияет косвенно).
-        # Имя не должно быть пустым.
-    TOPIC_RE = re.compile(r"^[a-zA-Z0-9._-]+$")    
-    if not TOPIC_RE.match(login):
-        raise ValueError(f"Недопустимое имя топика: '{login}'")
-
+def send_messages(receiver_login: str, message: str):
     producer = Producer({"bootstrap.servers": BROKER})
 
     def delivery_report(err, msg):
@@ -107,10 +97,17 @@ def send_messages(login: str, message: str):
         else:
             print(f"[+] Сообщение доставлено в {msg.topic()} [{msg.partition()}] offset {msg.offset()}")
 
+    # Формируем сообщение в формате JSON
+    message_data = {
+        "receiver_login": receiver_login,
+        "message": message,
+        "created_at": int(time.time() * 1000)  # Время создания в миллисекундах
+    }
+
     try:
         producer.produce(
-            topic=login,
-            value=message.encode("utf-8"),
+            topic=TOPIC,
+            value=json.dumps(message_data).encode("utf-8"),
             callback=delivery_report
         )
         producer.flush()

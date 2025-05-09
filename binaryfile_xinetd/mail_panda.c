@@ -5,11 +5,14 @@
 #include <unistd.h>
 #include <librdkafka/rdkafka.h>
 #include <time.h> 
+#include <cjson/cJSON.h>
 
 #define MAX_LEN 64
 #define KEY_SIZE crypto_stream_chacha20_KEYBYTES
 #define NONCE_SIZE crypto_stream_chacha20_NONCEBYTES
 #define POLL_TIMEOUT_MS 1000 // Тайм-аут в миллисекундах
+#define TOPIC "user-messages"
+#define BROKER "redpanda:9092"
 
 // The quick brown fox jumps over l ..(azy)
 static const uint8_t nonce[NONCE_SIZE] = {0};
@@ -26,7 +29,7 @@ char login[MAX_LEN + 1] = {0};
 #define disable_buffering(_fd) setvbuf(_fd, NULL, _IONBF, 0)
 
 // Функция расшифровки
-void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len) {
+void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len, const uint8_t *nonce, const uint8_t *key) {
     crypto_stream_chacha20_xor(plaintext, ciphertext, len, nonce, key);
 }
 
@@ -76,16 +79,16 @@ rd_kafka_t *create_consumer(const char *group_id, const char *offset_reset) {
     rd_kafka_conf_t *conf = rd_kafka_conf_new();
     char errstr[512];
 
-    // Получаем адрес брокера из переменной окружения KAFKA_BROKERS
-    const char *bootstrap_servers = getenv("KAFKA_BROKERS");
-    if (!bootstrap_servers) {
-        bootstrap_servers = "127.0.0.1:9092"; // Значение по умолчанию
-    }
+    // // Получаем адрес брокера из переменной окружения KAFKA_BROKERS
+    // const char *bootstrap_servers = getenv("KAFKA_BROKERS");
+    // if (!bootstrap_servers) {
+    //     bootstrap_servers = "127.0.0.1:9092"; // Значение по умолчанию
+    // }
     
     // Устанавливаем базовые параметры соединения
-    rd_kafka_conf_set(conf, "bootstrap.servers", bootstrap_servers, errstr, sizeof(errstr));
+    rd_kafka_conf_set(conf, "bootstrap.servers", BROKER, errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "log_level", "3", errstr, sizeof(errstr)); // Уровень INFO
-    rd_kafka_conf_set(conf, "debug", NULL, errstr, sizeof(errstr));     // Отключаем отладку "all"
+    // rd_kafka_conf_set(conf, "debug", NULL, errstr, sizeof(errstr));     // Отключаем отладку "all"
     rd_kafka_conf_set(conf, "group.id", group_id, errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "auto.offset.reset", offset_reset, errstr, sizeof(errstr));
 
@@ -101,9 +104,9 @@ rd_kafka_t *create_consumer(const char *group_id, const char *offset_reset) {
 // Подписка на топик
 void subscribe_to_topic(rd_kafka_t *rk, const char *topic) {
     rd_kafka_topic_partition_list_t *topics = rd_kafka_topic_partition_list_new(1);
-    rd_kafka_topic_partition_list_add(topics, (char*)topic, RD_KAFKA_PARTITION_UA);
+    rd_kafka_topic_partition_list_add(topics, (char *)topic, RD_KAFKA_PARTITION_UA);
     if (rd_kafka_subscribe(rk, topics) != RD_KAFKA_RESP_ERR_NO_ERROR) {
-        printf("Ошибка подписки на топик\n");
+        printf("Ошибка подписки на топик %s\n", topic);
         rd_kafka_topic_partition_list_destroy(topics);
         cleanup(rk);
         return;
@@ -115,62 +118,102 @@ void subscribe_to_topic(rd_kafka_t *rk, const char *topic) {
 void get_messages() {
     rd_kafka_t *rk = create_consumer(login, "earliest");
 
-    // Проверка существования топика
-    struct rd_kafka_metadata *metadata;
-    if (rd_kafka_metadata(rk, 0, NULL, (const struct rd_kafka_metadata **)&metadata, 1000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
-        printf("Ошибка получения метаданных\n");
-        cleanup(rk);
-        return;
-    }
-    int topic_exists = 0;
-    for (int i = 0; i < metadata->topic_cnt; i++) {
-        if (strcmp(metadata->topics[i].topic, (char*)login) == 0) {
-            topic_exists = 1;
-            break;
-        }
-    }
-    // int partition_count = metadata->topics[0].partition_cnt;//количество партиций в топике
-    rd_kafka_metadata_destroy(metadata);
+    // // Проверка существования топика
+    // struct rd_kafka_metadata *metadata;
+    // if (rd_kafka_metadata(rk, 0, NULL, (const struct rd_kafka_metadata **)&metadata, 1000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
+    //     printf("Ошибка получения метаданных\n");
+    //     cleanup(rk);
+    //     return;
+    // }
+    // int topic_exists = 0;
+    // for (int i = 0; i < metadata->topic_cnt; i++) {
+    //     if (strcmp(metadata->topics[i].topic, (char*)login) == 0) {
+    //         topic_exists = 1;
+    //         break;
+    //     }
+    // }
+    // // int partition_count = metadata->topics[0].partition_cnt;//количество партиций в топике
+    // rd_kafka_metadata_destroy(metadata);
 
-    if (!topic_exists) {
-        printf("Топик для логина %s не существует\n", login);
-        cleanup(rk);
-        return;
-    }
+    // if (!topic_exists) {
+    //     printf("Топик для логина %s не существует\n", login);
+    //     cleanup(rk);
+    //     return;
+    // }
 
     // Подписываем потребителя на топик
-    subscribe_to_topic(rk, (char*)login);
+    // subscribe_to_topic(rk, (char*)login);
+    subscribe_to_topic(rk, TOPIC);
 
     // Время 10 минут назад
-    int64_t ten_minutes_ago = (int64_t)(time(NULL) - 10 * 60) * 1000;
+    // int64_t ten_minutes_ago = (int64_t)(time(NULL) - 10 * 60) * 1000;
+    int64_t current_time_ms = (int64_t)time(NULL) * 1000;
 
-    // Устанавливаем смещения для сообщений за последние 10 минут
-    // похоже нам 1 патриции по уши, как тольковыйдем в космос 100000 сообщений/сек, так увеличим
-    rd_kafka_topic_partition_list_t *offsets = rd_kafka_topic_partition_list_new(1);
-    rd_kafka_topic_partition_list_add(offsets, (char*)login, 0)->offset = ten_minutes_ago;
-    if (rd_kafka_offsets_for_times(rk, offsets, 5000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
-        printf("Ошибка вычисления смещений\n");
-        rd_kafka_topic_partition_list_destroy(offsets);
-        cleanup(rk);
-        return;
-    }
-    // Устанавливаем потребителю начальные смещения для чтения
-    rd_kafka_assign(rk, offsets);
-    rd_kafka_topic_partition_list_destroy(offsets);
+    printf("Сообщения за последние 10 минут для %s:\n", login);
 
-    printf("Сообщения за последние 10 минут:\n");
     while (1) {
-        rd_kafka_message_t *msg = rd_kafka_consumer_poll(rk, 1000);
+        rd_kafka_message_t *msg = rd_kafka_consumer_poll(rk, POLL_TIMEOUT_MS);
         if (!msg) break;
         if (msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
             rd_kafka_message_destroy(msg);
             break;
         }
         if (msg->err == RD_KAFKA_RESP_ERR_NO_ERROR) {
-            printf("%.*s\n", (int)msg->len, (char*)msg->payload);
+            char *payload = (char *)msg->payload;
+            cJSON *json = cJSON_Parse(payload);
+            if (!json) {
+                printf("Ошибка парсинга JSON: %s\n", cJSON_GetErrorPtr());
+                rd_kafka_message_destroy(msg);
+                continue;
+            }
+
+            cJSON *receiver_login = cJSON_GetObjectItem(json, "receiver_login");
+            cJSON *message = cJSON_GetObjectItem(json, "message");
+            cJSON *created_at = cJSON_GetObjectItem(json, "created_at");
+
+            if (receiver_login && message && created_at && cJSON_IsString(receiver_login) &&
+                cJSON_IsString(message) && cJSON_IsNumber(created_at)) {
+                if (strcmp(receiver_login->valuestring, login) == 0) {
+                    int64_t created_at_ms = (int64_t)created_at->valuedouble;
+                    if (current_time_ms - created_at_ms <= 600000) {
+                        printf("%s\n", message->valuestring);
+                    }
+                }
+            }
+
+            cJSON_Delete(json);
+        } else {
+            printf("Ошибка чтения сообщения: %s\n", rd_kafka_err2str(msg->err));
         }
         rd_kafka_message_destroy(msg);
     }
+    // // Устанавливаем смещения для сообщений за последние 10 минут
+    // // похоже нам 1 патриции по уши, как тольковыйдем в космос 100000 сообщений/сек, так увеличим
+    // rd_kafka_topic_partition_list_t *offsets = rd_kafka_topic_partition_list_new(1);
+    // rd_kafka_topic_partition_list_add(offsets, (char*)login, 0)->offset = ten_minutes_ago;
+    // if (rd_kafka_offsets_for_times(rk, offsets, 5000) != RD_KAFKA_RESP_ERR_NO_ERROR) {
+    //     printf("Ошибка вычисления смещений\n");
+    //     rd_kafka_topic_partition_list_destroy(offsets);
+    //     cleanup(rk);
+    //     return;
+    // }
+    // // Устанавливаем потребителю начальные смещения для чтения
+    // rd_kafka_assign(rk, offsets);
+    // rd_kafka_topic_partition_list_destroy(offsets);
+
+    // printf("Сообщения за последние 10 минут:\n");
+    // while (1) {
+    //     rd_kafka_message_t *msg = rd_kafka_consumer_poll(rk, 1000);
+    //     if (!msg) break;
+    //     if (msg->err == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
+    //         rd_kafka_message_destroy(msg);
+    //         break;
+    //     }
+    //     if (msg->err == RD_KAFKA_RESP_ERR_NO_ERROR) {
+    //         printf("%.*s\n", (int)msg->len, (char*)msg->payload);
+    //     }
+    //     rd_kafka_message_destroy(msg);
+    // }
     
     //очистка
     cleanup(rk);
@@ -189,7 +232,7 @@ void input_token() {
         exit(1);
     }
 
-    decrypt(encrypted, (uint8_t*)login, encrypted_len);
+    decrypt(encrypted, (uint8_t*)login, encrypted_len, nonce, key);
     login[encrypted_len] = '\0';
 
     printf("Логин: %s\n", login);
