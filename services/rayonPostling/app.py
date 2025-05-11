@@ -201,21 +201,18 @@ def friend_profile(login):
         return redirect(url_for("profile"))
 
     is_friend = Friend.query.filter(
-        ((Friend.friend1_login == current_user.login) & (Friend.friend2_login == login))
-        | (
-            (Friend.friend1_login == login)
-            & (Friend.friend2_login == current_user.login)
-        ),
+        ((Friend.friend1_login == current_user.login) & (Friend.friend2_login == login)) | 
+        ((Friend.friend1_login == login) & (Friend.friend2_login == current_user.login)),
     ).first()
 
     user = User.query.filter_by(login=login).first_or_404()
 
-    if is_friend:
+    if is_friend and is_friend.is_approved: # добавили проверку на принятие запроса в друзья
         return render_template("friend_profile.html", user=user, is_friend=True)
     else:
         limited_info = {
             "login": user.login,
-            "initials": f"{user.name[0] if user.name else ''}{user.surname[0] if user.surname else ''}",
+            "initials": f"{user.name[0] if user.name else ''}. {user.surname[0] if user.surname else ''}.",
             "signature": generate_famous_signature(),  # Используем случайную подпись
         }
         return render_template(
