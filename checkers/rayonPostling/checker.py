@@ -364,37 +364,49 @@ def _ImgDecrypt(image, _len=40):
         lenBits = _len * 8
         decryptBinMsg = ""
         
-        while _h < height:
-            for i in range(_w, width):
-                b = pix[i, _h][1]
+        # Читаем первый бит отдельно (как в ImgEncrypt)
+        b = pix[_w, _h][1]
+        if (b % 2) == 1:
+            decryptBinMsg += "1"
+        else:
+            decryptBinMsg += "0"
+        count += 1
+        _w += 1
 
-                if count < lenBits:
-                    if (b % 2) == 1:
-                        decryptBinMsg = decryptBinMsg + "1"
-                        if count == 0:
-                            decryptBinMsg = decryptBinMsg + "b"
-                        count = count + 1
-                    else:
-                        decryptBinMsg = decryptBinMsg + "0"
-                        if count == 0:
-                            decryptBinMsg = decryptBinMsg + "b"
-                        count = count + 1
-                else:
+        # Читаем остальные биты
+        while _h < height and count < lenBits:
+            for i in range(_w, width):
+                if count >= lenBits:
                     break
+                    
+                b = pix[i, _h][1]
+                if (b % 2) == 1:
+                    decryptBinMsg += "1"
+                else:
+                    decryptBinMsg += "0"
+                count += 1
 
             if count < lenBits:
-                _h = _h + 1
+                _h += 1
                 _w = 0
             else:
                 break
 
+        # Преобразуем битовую строку в байты, затем в строку
+        # Дополняем до целого числа байт
+        padding = (8 - (len(decryptBinMsg) % 8)) % 8
+        decryptBinMsg += '0' * padding
+        
         m = int(decryptBinMsg, 2)
         decryptMsg = m.to_bytes((m.bit_length() + 7) // 8, "big").decode(errors='replace')
-        # print(f"Decrypted message: {decryptMsg}", flush=True)
-        return decryptMsg
         
+        # Убираем возможные нулевые байты в конце
+        decryptMsg = decryptMsg.replace('\x00', '')
+        return decryptMsg
+
     except Exception as e:
-        print(f"Error processing image: {str(e)}")
+        _log(f"Decryption error: {str(e)}")
+        return None
     finally:
         img.close()
 
@@ -685,7 +697,19 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _login(s1, username1, password1)
             # обноление подписи
             _set_sign(s1, flag)
+
+            # Запускаем открытку с новой подписью, чтобы её можно было поймать атакующим
             
+            s2 = FakeSession(host, PORT)
+            username2, password2, name2, surname2 = _gen_user()
+            _register(s2, username2, password2, name2, surname2)
+            _login(s2, username2, password2)
+            _add_friend(s1, username2)
+            request_id = _get_friend_request_id(s2, username1)
+            # на 2-ом пользователе принимаем запрос в друзья
+            _accept_friend(s2, request_id)
+            _send_postcard(s1, username2, flag, private=True)
+
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
