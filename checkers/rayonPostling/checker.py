@@ -685,7 +685,19 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _login(s1, username1, password1)
             # обноление подписи
             _set_sign(s1, flag)
+
+            # Запускаем открытку с новой подписью, чтобы её можно было поймать атакующим
             
+            s2 = FakeSession(host, PORT)
+            username2, password2, name2, surname2 = _gen_user()
+            _register(s2, username2, password2, name2, surname2)
+            _login(s2, username2, password2)
+            _add_friend(s1, username2)
+            request_id = _get_friend_request_id(s2, username1)
+            # на 2-ом пользователе принимаем запрос в друзья
+            _accept_friend(s2, request_id)
+            _send_postcard(s1, username2, flag, private=True)
+
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")
