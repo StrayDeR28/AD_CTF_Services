@@ -85,6 +85,7 @@ rd_kafka_t *create_consumer(const char *group_id, const char *offset_reset) {
     // rd_kafka_conf_set(conf, "debug", NULL, errstr, sizeof(errstr));     // Отключаем отладку "all"
     rd_kafka_conf_set(conf, "group.id", group_id, errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "auto.offset.reset", offset_reset, errstr, sizeof(errstr));
+    rd_kafka_conf_set(conf, "enable.auto.commit", "false", errstr, sizeof(errstr));
 
     // Создаём потребителя
     rd_kafka_t *rk = rd_kafka_new(RD_KAFKA_CONSUMER, conf, errstr, sizeof(errstr));
