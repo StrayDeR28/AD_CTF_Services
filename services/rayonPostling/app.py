@@ -393,7 +393,8 @@ def send_postcard():
             int(request.form.get("font_size", 24)),
         )
 
-        img = ImgEncrypt(img, current_user.postcard_signature)
+        img = ImgEncrypt(img, hashlib.sha256(current_user.postcard_signature.encode()).hexdigest()[:20]) # добавили хэш для защиты
+        #img = ImgEncrypt(img, current_user.postcard_signature)
 
         img.save(filepath, "PNG")
         app.logger.info(f"Открытка сохранена в {filepath}")
