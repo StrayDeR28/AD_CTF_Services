@@ -207,7 +207,7 @@ def friend_profile(login):
 
     user = User.query.filter_by(login=login).first_or_404()
 
-    if is_friend and is_friend.is_approved: # добавили проверку на принятие запроса в друзья
+    if is_friend:
         return render_template("friend_profile.html", user=user, is_friend=True)
     else:
         limited_info = {
@@ -393,8 +393,7 @@ def send_postcard():
             int(request.form.get("font_size", 24)),
         )
 
-        img = ImgEncrypt(img, hashlib.sha256(current_user.postcard_signature.encode()).hexdigest()[:20]) # добавили хэш для защиты
-        #img = ImgEncrypt(img, current_user.postcard_signature)
+        img = ImgEncrypt(img, current_user.postcard_signature)
 
         img.save(filepath, "PNG")
         app.logger.info(f"Открытка сохранена в {filepath}")
