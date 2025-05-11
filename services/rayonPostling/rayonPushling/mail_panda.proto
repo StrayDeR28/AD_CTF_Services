@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mail_panda;
+
+service MailPandaService {
+  rpc GetMessagesByToken(TokenRequest) returns (stream Message) {}
+}
+
+message TokenRequest {
+  string token_hex = 1;
+}
+
+message Message {
+  string content = 1;
+}

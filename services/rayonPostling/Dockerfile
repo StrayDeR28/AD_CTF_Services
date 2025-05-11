@@ -3,16 +3,17 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libffi-dev \
-    libssl-dev \
-    libjpeg-dev \
-    zlib1g-dev \
-    build-essential \
-    libfreetype6-dev \
-    libpng-dev \
-    fonts-dejavu-core \
+RUN apt-get update \
+    && apt-get install -y \
+       gcc \
+       libffi-dev \
+       libssl-dev \
+       libjpeg-dev \
+       zlib1g-dev \
+       build-essential \
+       libfreetype6-dev \
+       libpng-dev \
+       fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Установка зависимостей Python

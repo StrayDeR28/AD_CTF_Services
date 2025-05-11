@@ -1,12 +1,55 @@
-version: '3.8'
-
 services:
+  redpanda:
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    image: redpandadata/redpanda:latest
+    container_name: redpanda
+    command: >
+      redpanda start
+      --smp 1
+      --memory 1G
+      --kafka-addr PLAINTEXT://0.0.0.0:9092
+      --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      --check=false
+      && sleep 10
+      && rpk topic create user-messages --config retention.ms=600000 --config segment.ms=60000 --config segment.bytes=150000 --partitions 1 --replicas 1 || true
+    expose:
+      - "9092"
+    networks:
+      - rayonpostling-network
+
+  app:
+    build:
+      context: ./rayonPushling
+      dockerfile: Dockerfile
+    container_name: rayonpostling-app-1
+    ports:
+      - "50051:50051"
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - rayonpostling-network
+
+  client:
+    build:
+      context: ./rayonPushling
+      dockerfile: Dockerfile.client
+    container_name: rayonpostling-client
+    depends_on:
+      - app
+    networks:
+      - rayonpostling-network
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    # ports:
-      # - "5000:5000"
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
@@ -19,51 +62,26 @@ services:
       - images_data:/app/static/images
     depends_on:
       - redpanda
-  
+    expose:
+      - "5000"
+    networks:
+      - rayonpostling-network
+
   caddy:
     image: caddy:latest
+    container_name: rayonpostling-caddy-1
     ports:
-     - "5000:5000"
+      - "5000:5000"
     volumes:
-     - ./Caddyfile:/etc/caddy/Caddyfile:z
+      - ./Caddyfile:/etc/caddy/Caddyfile:z
     depends_on:
-     - web
+      - web
+    networks:
+      - rayonpostling-network
 
-
-  app:
-    build:
-      context: ./rayonPushling
-      dockerfile: Dockerfile
-    ports:
-      - "31337:31337"
-    environment:
-      - KAFKA_BROKERS=redpanda:9092
-    restart: always
-    depends_on:
-      - redpanda
-    volumes:
-      - ./rayonPushling/xinetd.conf:/etc/xinetd.d/mail_panda:z
-      
-  # smp 1 это 1000parts/1000topiks
-  redpanda:
-    healthcheck:
-      test: ["CMD", "rpk", "cluster", "health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    image: redpandadata/redpanda:latest
-    container_name: redpanda
-    command: >
-      redpanda start
-      --smp 1 
-      --memory 1G
-      --kafka-addr PLAINTEXT://0.0.0.0:9092
-      --advertise-kafka-addr PLAINTEXT://redpanda:9092
-      --check=false
-      && sleep 5
-      && rpk topic create user-messages --config retention.ms=600000 --config segment.ms=60000 --config segment.bytes=150000 --partitions 1 --replicas 1 || true
-    expose:
-      - "9092"
+networks:
+  rayonpostling-network:
+    driver: bridge
 
 volumes:
   postcards_data:
