@@ -9,7 +9,14 @@ BROKER = "redpanda:9092"  # Вместо localhost используем имя �
 TOPIC = "user-messages"   # Единый топик
 
 def ImgEncrypt(img, message):
-    lenBits = (len(message) * 8) + 1
+    # Преобразуем строку в байты, затем в битовую строку (без '0b')
+    message_bytes = message.encode()  # Работает и с текстом, и с hex-строками
+    binMsg = bin(int.from_bytes(message_bytes, "big"))[2:]  # Убираем '0b'
+    
+    # Дополняем нулями до полных байтов (чтобы len(binMsg) делился на 8)
+    binMsg = binMsg.zfill(8 * ((len(binMsg) + 7) // 8))
+    
+    lenBits = len(binMsg) + 1  # +1 для первого бита
     width = img.size[0]
     height = img.size[1]
     _h = int(height / 2)
@@ -17,53 +24,49 @@ def ImgEncrypt(img, message):
 
     pix = img.load()
 
-    binMsg = bin(int.from_bytes(message.encode(), "big"))
-
-    count = 2
+    count = 0  # Индекс текущего бита в binMsg
     a0 = pix[_w, _h][0]  # red
     b0 = pix[_w, _h][1]  # green
     c0 = pix[_w, _h][2]  # blue
-    if binMsg[0] == "1":
-        if (b0 % 2) == 0:
-            pix[_w, _h] = (a0, b0 + 1, c0)
 
-    else:
-        if (b0 % 2) == 1:
-            if b0 == 255:
-                pix[_w, _h] = (a0, 254, c0)
-            else:
+    # Обрабатываем первый бит
+    if count < lenBits - 1:  # -1, т.к. lenBits = len(binMsg) + 1
+        if binMsg[count] == "1":
+            if (b0 % 2) == 0:
                 pix[_w, _h] = (a0, b0 + 1, c0)
+        else:
+            if (b0 % 2) == 1:
+                if b0 == 255:
+                    pix[_w, _h] = (a0, 254, c0)
+                else:
+                    pix[_w, _h] = (a0, b0 + 1, c0)
+        count += 1
 
     _w = _w + 1
     while _h < height:
         for i in range(_w, width):
+            if count >= lenBits - 1:
+                break
+
             a = pix[i, _h][0]  # red
             b = pix[i, _h][1]  # green
             c = pix[i, _h][2]  # blue
 
-            if count < lenBits:
-                if binMsg[count] == "1":
-                    count = count + 1
-                    if (b % 2) == 0:
-                        pix[i, _h] = (a, b + 1, c)
-
-                else:
-                    count = count + 1
-                    if (b % 2) == 1:
-                        if b == 255:
-                            pix[i, _h] = (a, 254, c)
-                        else:
-                            pix[i, _h] = (a, b + 1, c)
-
+            if binMsg[count] == "1":
+                if (b % 2) == 0:
+                    pix[i, _h] = (a, b + 1, c)
             else:
-                i = width
-                break
+                if (b % 2) == 1:
+                    if b == 255:
+                        pix[i, _h] = (a, 254, c)
+                    else:
+                        pix[i, _h] = (a, b + 1, c)
+            count += 1
 
-        if count < lenBits:
+        if count < lenBits - 1:
             _h = _h + 1
             _w = 0
         else:
-            _h = height
             break
 
     return img
