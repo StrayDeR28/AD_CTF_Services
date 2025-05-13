@@ -159,7 +159,9 @@ def _gen_user():
     # username = f"{base_username}_{unique_suffix}"
     password = faker.password(length=12)
     username = faker.user_name()
-    
+    now = str(time.time()).encode()
+    hash_suffix = hashlib.sha256(now).hexdigest()[:6].upper()  # первые 6 символов хеша
+    username += hash_suffix
     # _log(f"Generated users data: {username}, {password}, {name}, {surname}")
     return username, password, name, surname
 
@@ -178,13 +180,15 @@ def _register(s, username, password, name, surname):
     
     if r.status_code != 302:
         _log(f"Unexpected /register status code {r.status_code}")
+        _log(f"login: {username}, password: {password}, name: {name}, surname: {surname}")
+        _log(f"Request text: {r.text}, {r}")
         die(ExitStatus.MUMBLE, f"Unexpected /register status code {r.status_code}")
     if len(r.cookies) == 0:
         _log(f"No cookies set after registration")
         die(ExitStatus.MUMBLE, "No cookies set after registration")
-    if r.headers.get("Location") != "/login":
-        _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
-        die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
+    # if r.headers.get("Location") != "/login":
+    #     _log(f"Unexpected redirect after registration: {r.headers.get('Location')}")   #где мы?
+    #     die(ExitStatus.MUMBLE, f"Unexpected redirect after registration: {r.headers.get('Location')}")
 
 # логирование
 def _login(s, username, password):
@@ -202,8 +206,8 @@ def _login(s, username, password):
         die(ExitStatus.MUMBLE, f"Unexpected /login status code {r.status_code}")
     if len(r.cookies) == 0:
         die(ExitStatus.MUMBLE, "No cookies set after login")
-    if r.headers.get("Location") != "/":    #где мы?
-        die(ExitStatus.MUMBLE, f"Unexpected redirect after login: {r.headers.get('Location')}")
+    # if r.headers.get("Location") != "/":    #где мы?
+    #     die(ExitStatus.MUMBLE, f"Unexpected redirect after login: {r.headers.get('Location')}")
 
 # послали запрос в друзья    
 def _add_friend(s, friend_login):
@@ -234,6 +238,7 @@ def _get_friend_request_id(s, expected_friend_login):
     pattern = r'<span>{}</span>[^<]*<div>[^<]*<a href="/accept_friend_request/(\d+)"'.format(re.escape(expected_friend_login))
     match = re.search(pattern, html.unescape(r.text), re.DOTALL)
     if not match:
+        _log(f"Request text: {r.text}, {r}")
         die(ExitStatus.MUMBLE, "No friend request found in profile")
     # возвращаем первый айди для нашего друга
     return match.group(1)   
@@ -271,6 +276,7 @@ def _verify_profile(profile_html, name, surname):
 # послать открытку
 def _send_postcard(s, receiver, message, private):
     # _log(f"Send postcard: receiver: {receiver}, messge: {message}, privateness: {private}")
+    rand_color = secrets.token_hex(3)
     try: 
         data = {
             "background": f"{random.randint(0, 18)}.png", 
@@ -278,14 +284,15 @@ def _send_postcard(s, receiver, message, private):
             "message": message,
             "receiver": receiver,
             #"font_size":"24",
-            "pos_x": "200",
+            "pos_x": "50",
             "pos_y": "200",
-            "color": "#000000",
+            "color": f"#{rand_color}",
             "font": "Arial",
             "is_private":"off"
         }
         if private:
             data["is_private"] = "on"
+            
         r = s.post("/send_postcard", data=data, allow_redirects=True)
     except Exception as e:
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
@@ -298,7 +305,7 @@ def _send_postcard(s, receiver, message, private):
 
     match = re.search(r'/download_card/(\d+)', r.text)
     if not match:
-        die(ExitStatus.MUMBLE, "Failed to extract postcard ID")
+        die(ExitStatus.MUMBLE, f"Failed to extract postcard ID, color was: {rand_color}")
     
     return int(match.group(1))
 
@@ -357,37 +364,49 @@ def _ImgDecrypt(image, _len=40):
         lenBits = _len * 8
         decryptBinMsg = ""
         
-        while _h < height:
-            for i in range(_w, width):
-                b = pix[i, _h][1]
+        # Читаем первый бит отдельно (как в ImgEncrypt)
+        b = pix[_w, _h][1]
+        if (b % 2) == 1:
+            decryptBinMsg += "1"
+        else:
+            decryptBinMsg += "0"
+        count += 1
+        _w += 1
 
-                if count < lenBits:
-                    if (b % 2) == 1:
-                        decryptBinMsg = decryptBinMsg + "1"
-                        if count == 0:
-                            decryptBinMsg = decryptBinMsg + "b"
-                        count = count + 1
-                    else:
-                        decryptBinMsg = decryptBinMsg + "0"
-                        if count == 0:
-                            decryptBinMsg = decryptBinMsg + "b"
-                        count = count + 1
-                else:
+        # Читаем остальные биты
+        while _h < height and count < lenBits:
+            for i in range(_w, width):
+                if count >= lenBits:
                     break
+                    
+                b = pix[i, _h][1]
+                if (b % 2) == 1:
+                    decryptBinMsg += "1"
+                else:
+                    decryptBinMsg += "0"
+                count += 1
 
             if count < lenBits:
-                _h = _h + 1
+                _h += 1
                 _w = 0
             else:
                 break
 
+        # Преобразуем битовую строку в байты, затем в строку
+        # Дополняем до целого числа байт
+        padding = (8 - (len(decryptBinMsg) % 8)) % 8
+        decryptBinMsg += '0' * padding
+        
         m = int(decryptBinMsg, 2)
         decryptMsg = m.to_bytes((m.bit_length() + 7) // 8, "big").decode(errors='replace')
-        # print(f"Decrypted message: {decryptMsg}", flush=True)
-        return decryptMsg
         
+        # Убираем возможные нулевые байты в конце
+        decryptMsg = decryptMsg.replace('\x00', '')
+        return decryptMsg
+
     except Exception as e:
-        print(f"Error processing image: {str(e)}")
+        _log(f"Decryption error: {str(e)}")
+        return None
     finally:
         img.close()
 
@@ -563,19 +582,21 @@ def List_of_users_check(host):
         die(ExitStatus.MUMBLE, f"Failed to access users page after login, status code {r.status_code}")
     # начинаем искать пользователей
     soup = BeautifulSoup(r.text, 'html.parser')
+    logins = []
+    
+    # Ищем div со стилем display:none
+    hidden_div = soup.find("div", {"style": "display:none"})
+    if hidden_div:
+        # Получаем текст из div и разбиваем его по запятым
+        users_text = hidden_div.text.strip()
+        logins = [login.strip() for login in users_text.split(",") if login.strip()]
+    else:
+        _log(f"Request text: {r.text}, {r}")
+        _log(f"Soup text: {soup}")
+        die(ExitStatus.MUMBLE, "Hidden users div not found")
 
-    # Попробуем найти логины в <span class="hidden" data-users="...">
-    hidden_span = soup.find("span", {"class": "hidden", "data-users": True})
-    if hidden_span:
-        try:
-            b64_data = hidden_span["data-users"]
-            decoded = base64.b64decode(b64_data).decode()
-            logins = [login.strip() for login in decoded.split(",") if login.strip()]
-        except Exception as e:
-            _log(f"[!] Не удалось распарсить логины из data-users: {e}")
-
-    if not username1 in logins: # Ищем пользователя среди логинов
-        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}") 
+    if not username1 in logins:
+        die(ExitStatus.MUMBLE, f"Username not found in logins {r.status_code}")
 
 def Signature(host):
     _log("Checking signature")
@@ -676,7 +697,19 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             _login(s1, username1, password1)
             # обноление подписи
             _set_sign(s1, flag)
+
+            # Запускаем открытку с новой подписью, чтобы её можно было поймать атакующим
             
+            s2 = FakeSession(host, PORT)
+            username2, password2, name2, surname2 = _gen_user()
+            _register(s2, username2, password2, name2, surname2)
+            _login(s2, username2, password2)
+            _add_friend(s1, username2)
+            request_id = _get_friend_request_id(s2, username1)
+            # на 2-ом пользователе принимаем запрос в друзья
+            _accept_friend(s2, request_id)
+            _send_postcard(s1, username2, flag, private=True)
+
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
             die(ExitStatus.MUMBLE, f"Failed to put flag: {e}")

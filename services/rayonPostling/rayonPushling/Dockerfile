@@ -6,6 +6,7 @@ RUN apt-get update --fix-missing -o Acquire::http::Timeout=10 \
     xinetd \
     libsodium23 \
     librdkafka1 \
+    libcjson1 \ 
     && rm -rf /var/lib/apt/lists/*
 
 # Установка рабочей директории
