@@ -168,7 +168,7 @@ def generate_token(login):
             0x65,
             0x72,
             0x20,
-            0x6C,
+            0x70,#0x6C,
         ]
     )
 
