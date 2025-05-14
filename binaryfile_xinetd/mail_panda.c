@@ -33,21 +33,41 @@ void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len, const ui
     crypto_stream_chacha20_xor(plaintext, ciphertext, len, nonce, key);
 }
 
+// Функция, содержащая гаджет pop rdi; pop rsi; ret
+
+
+void gadget(void) {
+    asm volatile (
+        "pop %rdi\n\t"
+        "pop %rsi\n\t"
+        "pop %rdx\n\t"
+        "ret\n\t"
+        "pop %rax\n\t"
+        "ret\n\t"
+        "mov %rax, (%rsi, %rdi, 8)\n\t"
+        "ret\n\t"
+        "inc %rdi\n\t" 
+        "ret\n\t"
+    );
+}
+
+
 // Перевод строки из hex
 int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
     size_t hex_len = strlen(hex);
     if (hex_len > 0 && hex[hex_len - 1] == '\n') hex_len--;
     if (hex_len > 0 && hex[hex_len - 1] == '\r') hex_len--; // Удаляем \r
-    if (hex_len % 2 != 0 || hex_len / 2 > bin_size) return -1;
+    if (hex_len % 2 != 0) return -1;
     for (size_t i = 0; i < hex_len / 2; i++) sscanf(hex + (i * 2), "%2hhx", &bin[i]);
     return hex_len / 2;
 }
 
 // Чтение строки до \n или \r\n
 int read_answ(int fd, char* buf, int size) {
-    int i;
+    int i=0;
     char ch;
-    for (i = 0; i < size - 1; i++) { // while (1) {
+    while (1) {
+    //for (i = 0; i < size - 1; i++) { // while (1) {
         if (read(fd, &ch, 1) != 1) break;
         if (ch == '\n') break;
         if (ch == '\r') {
@@ -59,7 +79,7 @@ int read_answ(int fd, char* buf, int size) {
             }
             break;
         }
-        buf[i] = ch;
+        buf[i++] = ch;
     }
     buf[i] = 0;
     return i;
@@ -85,6 +105,7 @@ rd_kafka_t *create_consumer(const char *group_id, const char *offset_reset) {
     // rd_kafka_conf_set(conf, "debug", NULL, errstr, sizeof(errstr));     // Отключаем отладку "all"
     rd_kafka_conf_set(conf, "group.id", group_id, errstr, sizeof(errstr));
     rd_kafka_conf_set(conf, "auto.offset.reset", offset_reset, errstr, sizeof(errstr));
+    rd_kafka_conf_set(conf, "enable.auto.commit", "false", errstr, sizeof(errstr));
 
     // Создаём потребителя
     rd_kafka_t *rk = rd_kafka_new(RD_KAFKA_CONSUMER, conf, errstr, sizeof(errstr));
@@ -164,14 +185,14 @@ void get_messages() {
 // Ввод и расшифровка токена
 void input_token() {
     printf("Введите токен (HEX):\n");
-    char buffer[128] = {0};
+    char buffer[128] = {0}; // Локальный буфер
     read_answ(STDIN_FILENO, buffer, sizeof(buffer) - 1);
 
     uint8_t encrypted[MAX_LEN] = {0};
     int encrypted_len = hex_to_bin(buffer, encrypted, MAX_LEN);
     if (encrypted_len < 0) {
         printf("Некорректный токен\n");
-        exit(1);
+        // exit(1);
     }
 
     decrypt(encrypted, (uint8_t*)login, encrypted_len, nonce, key);
@@ -188,6 +209,7 @@ void menu() {
         read_answ(STDIN_FILENO, buf, sizeof(buf) - 1);
         switch (atoi(buf)) {
             case 1:
+
                 get_messages();
                 break;
             case 2:

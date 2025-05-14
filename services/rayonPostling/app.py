@@ -100,6 +100,11 @@ def login():
         if not user or not check_password_hash(user.password, password):
             flash("Неверный логин или пароль")
             return redirect(url_for("login"))
+        
+        token = generate_token(login)
+        user.notification_token = token
+        current_user.notification_token = token
+        db.session.commit()
 
         login_user(user, remember=remember)
         return redirect(url_for("main"))
