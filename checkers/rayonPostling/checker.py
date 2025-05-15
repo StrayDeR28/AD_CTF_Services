@@ -865,8 +865,8 @@ def die(code: ExitStatus, msg: str):
 
 
 def info():
-    print("vulns: 1:2:2", flush=True)#surname, signature, postcard text
-    #print("timeout: 60", flush=True)# ломает чекер на пут гет
+    print("vulns: 1:2:2", flush=True, end="")#surname, signature, postcard text
+    print("timeout: 30", flush=True, end="")
     exit(101)
 
 
