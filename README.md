@@ -7,7 +7,7 @@
 ## Уязвимости
 ### Поле ввода фамилии
 
-(Эксплуатация)[https://github.com/StrayDeR28/AD_CTF_Services/blob/main/exploits/exploit_surname.py]:
+[Эксплуатация](https://github.com/StrayDeR28/AD_CTF_Services/blob/main/exploits/exploit_surname.py):
     - Зарегистрироваться
     - Залогиниться
     - Получить список пользователей
