@@ -708,7 +708,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             request_id = _get_friend_request_id(s2, username1)
             # на 2-ом пользователе принимаем запрос в друзья
             _accept_friend(s2, request_id)
-            _send_postcard(s1, username2, flag, private=True)
+            _send_postcard(s1, username2, message=random.choice(rofls), private=False)
 
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
@@ -833,6 +833,8 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
         except Exception as e:
             _log(f"Failed to get flag from postcard message (vuln=3): {e}")
             die(ExitStatus.CORRUPT, f"Failed to get flag: {e}")
+    else:
+        die(ExitStatus.CHECKER_ERROR, f"vuln id out of range: {vuln}")
                     
     die(ExitStatus.OK, f"All OK! Successfully retrieved a flag from api")
 
@@ -865,8 +867,8 @@ def die(code: ExitStatus, msg: str):
 
 
 def info():
-    print("vulns: 1:2:2", flush=True)#surname, signature, postcard text
-    #print("timeout: 60", flush=True)# ломает чекер на пут гет
+    print("vulns: 1:2:2", flush=True, end="")#surname, signature, postcard text
+    print("timeout: 30", flush=True, end="")
     exit(101)
 
 
