@@ -868,7 +868,6 @@ def die(code: ExitStatus, msg: str):
 
 def info():
     print("vulns: 1:2:2", flush=True, end="")#surname, signature, postcard text
-    print("timeout: 30", flush=True, end="")
     exit(101)
 
 
