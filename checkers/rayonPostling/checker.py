@@ -475,8 +475,8 @@ def Download_postcard_check(host):
     request_id = _get_friend_request_id(s2, username1)
     _accept_friend(s2, request_id)
     # отправка писем
-    open_postcard_id = _send_postcard(s1, username2, message="Test open postcard", private=False)
-    private_postcard_id = _send_postcard(s1, username2, message="Test private postcard", private=True)
+    open_postcard_id = _send_postcard(s1, username2, message=random.choice(rofls), private=False)
+    private_postcard_id = _send_postcard(s1, username2, message=random.choice(rofls), private=True)
     # # Перейти на открытки по ID           если можно скачивать сразу, то не нужно
     # _view_postcard(s3, open_postcard_id)
     # _view_postcard(s3, private_postcard_id)
