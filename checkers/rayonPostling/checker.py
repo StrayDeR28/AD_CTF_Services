@@ -875,20 +875,20 @@ def _main():
     # _log(f"Received arguments: {argv}, length: {len(argv)}\n")
     try:
         cmd = argv[1]
-        hostname = argv[2]
         if cmd == "put":
             if len(argv) != 6:
                 raise IndexError(f"Expected 6 arguments for put, got {len(argv)}")
-            fid, flag, vuln = argv[3], argv[4], int(argv[5])
+            hostname = argv[2], fid, flag, vuln = argv[3], argv[4], int(argv[5])
             # _log(f"Calling put with: hostname={hostname}, fid={fid}, flag={flag}, vuln={vuln}")
             put(hostname, fid, flag, vuln)
         elif cmd == "get":
             if len(argv) != 6:
                 raise IndexError(f"Expected 6 arguments for get, got {len(argv)}")
-            fid, flag, vuln = argv[3], argv[4], int(argv[5])
+            hostname = argv[2], fid, flag, vuln = argv[3], argv[4], int(argv[5])
             _log(f"Calling get with: hostname={hostname}, fid={fid}, flag={flag}, vuln={vuln}")
             get(hostname, fid, flag, vuln)
         elif cmd == "check":
+            hostname = argv[2]
             check(hostname)
         elif cmd == "info":
             info()
