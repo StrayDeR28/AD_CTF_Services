@@ -708,7 +708,7 @@ def put(host: str, flag_id: str, flag: str, vuln: int):
             request_id = _get_friend_request_id(s2, username1)
             # на 2-ом пользователе принимаем запрос в друзья
             _accept_friend(s2, request_id)
-            _send_postcard(s1, username2, flag, private=True)
+            _send_postcard(s1, username2, message=random.choice(rofls), private=False)
 
         except Exception as e:
             _log(f"Failed to put flag in signature (vuln=2): {e}")
