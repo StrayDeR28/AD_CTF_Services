@@ -833,6 +833,8 @@ def get(host: str, flag_id: str, flag: str, vuln: int):
         except Exception as e:
             _log(f"Failed to get flag from postcard message (vuln=3): {e}")
             die(ExitStatus.CORRUPT, f"Failed to get flag: {e}")
+    else:
+        die(ExitStatus.CHECKER_ERROR, f"vuln id out of range: {vuln}")
                     
     die(ExitStatus.OK, f"All OK! Successfully retrieved a flag from api")
 
