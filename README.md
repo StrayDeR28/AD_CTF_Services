@@ -28,6 +28,7 @@ Web-сервис для создания и пересылки открыток 
 ### Сообщение открытки
 
 Эксплуатация:
+
 [Вариант 1](https://github.com/StrayDeR28/AD_CTF_Services/blob/main/exploits/exploit_mail.py):
 * Зарегистрироваться
 * Залогиниться
