@@ -1,6 +1,8 @@
 # Rayon Postling and Pushling
 Сервисы для ad ctf команды "Underdog-и с сыром". 5 курс, 2025 г.
+
 Web-сервис для создания и пересылки открыток между пользователями.
+
 Бинарный сервис для получения уведомлений о добавлении в друзья и получении сообщений.
 
 Авторы: [@artemskorypin](https://github.com/artemskorypin), [@StrayDeR28](https://github.com/StrayDeR28), [@nickname838](https://github.com/nickname838), [@NiZoX101](https://github.com/NiZoX101), [@Vladone9](https://github.com/Vladone9)
