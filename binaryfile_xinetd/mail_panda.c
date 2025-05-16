@@ -33,10 +33,8 @@ void decrypt(const uint8_t *ciphertext, uint8_t *plaintext, size_t len, const ui
     crypto_stream_chacha20_xor(plaintext, ciphertext, len, nonce, key);
 }
 
-// Функция, содержащая гаджет pop rdi; pop rsi; ret
-
-
-void gadget(void) {
+// Функция, содержащая гаджеты
+void packet(void) {
     asm volatile (
         "pop %rdi\n\t"
         "pop %rsi\n\t"
@@ -50,7 +48,6 @@ void gadget(void) {
         "ret\n\t"
     );
 }
-
 
 // Перевод строки из hex
 int hex_to_bin(const char *hex, uint8_t *bin, size_t bin_size) {
@@ -209,7 +206,6 @@ void menu() {
         read_answ(STDIN_FILENO, buf, sizeof(buf) - 1);
         switch (atoi(buf)) {
             case 1:
-
                 get_messages();
                 break;
             case 2:
