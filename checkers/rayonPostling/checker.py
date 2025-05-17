@@ -526,10 +526,10 @@ def Postcard_message_check(host: str):
         _log(f"Connecting to mail_panda binary on {host}:31337")
         p = remote(host, 31337)
 
-        p.recvuntil("Введите токен (HEX):".encode('utf-8'))  # строка -> байты
+        p.recvuntil("Введите токен (HEX):".encode('utf-8'), timeout=10)  # строка -> байты
         p.sendline(token.encode() if isinstance(token, str) else token)
 
-        p.recvuntil(b'2.Exit')  # байтовая строка
+        p.recvuntil(b'2.Exit', timeout=10)  # байтовая строка
         p.sendline(b'1')
         
         # Формируем ожидаемую строку
@@ -542,7 +542,7 @@ def Postcard_message_check(host: str):
 
         while time.time() - start_time < 10:
             try:
-                line = p.recvline()
+                line = p.recvline(timeout=10)
                 if not line:
                     continue
                 decoded_line = line.decode('utf-8', errors='ignore').strip()
@@ -558,16 +558,16 @@ def Postcard_message_check(host: str):
 
         if found == False:
             _log("Test message not found in output after 10 seconds")
-            die(ExitStatus.CORRUPT, "Test message not found in notifications")
+            die(ExitStatus.MUMBLE, "Test message not found in notifications")
         else:
             _log("Test message found! Everything is OK!")
 
     except requests.exceptions.RequestException as e:
         _log(f"Network error: {e}")
-        die(ExitStatus.MUMBLE, f"Network error: {str(e)}")# changed down status to mumble
+        die(ExitStatus.DOWN, f"Network error: {str(e)}")# changed down status to mumble
     except Exception as e:
         _log(f"Unexpected error: {e}")
-        die(ExitStatus.DOWN, f"Unexpected error: {str(e)}")
+        die(ExitStatus.MUMBLE, f"Unexpected error: {str(e)}")
 
 #список пользователей
 def List_of_users_check(host):
