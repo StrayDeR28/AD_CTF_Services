@@ -182,7 +182,7 @@ def _register(s, username, password, name, surname):
         _log(f"Unexpected /register status code {r.status_code}")
         _log(f"login: {username}, password: {password}, name: {name}, surname: {surname}")
         _log(f"Request text: {r.text}, {r}")
-        die(ExitStatus.MUMBLE, f"Unexpected /register status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /register status code {r.status_code}")
     if len(r.cookies) == 0:
         _log(f"No cookies set after registration")
         die(ExitStatus.MUMBLE, "No cookies set after registration")
@@ -203,7 +203,7 @@ def _login(s, username, password):
         die(ExitStatus.DOWN, f"Failed to login: {e}")
     
     if r.status_code != 302:
-        die(ExitStatus.MUMBLE, f"Unexpected /login status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /login status code {r.status_code}")
     if len(r.cookies) == 0:
         die(ExitStatus.MUMBLE, "No cookies set after login")
     # if r.headers.get("Location") != "/":    #где мы?
@@ -222,7 +222,7 @@ def _add_friend(s, friend_login):
         die(ExitStatus.DOWN, f"Failed to send friend request: {e}")
     
     if r.status_code != 302:
-        die(ExitStatus.MUMBLE, f"Unexpected /send_friend_request status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /send_friend_request status code {r.status_code}")
 
 # находим это запрос
 def _get_friend_request_id(s, expected_friend_login):
@@ -233,7 +233,7 @@ def _get_friend_request_id(s, expected_friend_login):
         die(ExitStatus.DOWN, f"Failed to access profile: {e}")
     
     if r.status_code != 200:
-        die(ExitStatus.MUMBLE, f"Unexpected /profile status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /profile status code {r.status_code}")
     
     pattern = r'<span>{}</span>[^<]*<div>[^<]*<a href="/accept_friend_request/(\d+)"'.format(re.escape(expected_friend_login))
     match = re.search(pattern, html.unescape(r.text), re.DOTALL)
@@ -252,7 +252,7 @@ def _accept_friend(s, request_id):
         die(ExitStatus.DOWN, f"Failed to accept friend request: {e}")
     
     if r.status_code != 302:
-        die(ExitStatus.MUMBLE, f"Unexpected /accept_friend_request status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /accept_friend_request status code {r.status_code}")
 
 # переходим на профиль друга
 def _get_profile(s, login):
@@ -263,7 +263,7 @@ def _get_profile(s, login):
         die(ExitStatus.DOWN, f"Failed to access friend profile: {e}")
     
     if r.status_code != 200:
-        die(ExitStatus.MUMBLE, f"Unexpected /profile/{login} status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /profile/{login} status code {r.status_code}")
     
     return r.text
 
@@ -298,7 +298,7 @@ def _send_postcard(s, receiver, message, private):
         die(ExitStatus.DOWN, f"Failed to send postcard: {e}")
     
     if r.status_code != 200:
-        die(ExitStatus.MUMBLE, f"Unexpected /send_postcard status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /send_postcard status code {r.status_code}")
     # если allow_redirects=False, те нет тела
     # location = r.headers.get("Location")
     # match = re.search(r'/view_card/(\d+)', location)
@@ -317,7 +317,7 @@ def _view_postcard(session, card_id):
     except requests.RequestException as e:
         die(ExitStatus.DOWN, f"Failed to view postcard {card_id}: {e}")
     if r.status_code != 200:
-        die(ExitStatus.MUMBLE, f"Unexpected /view_card/{card_id} status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /view_card/{card_id} status code {r.status_code}")
     # Проверяем наличие ссылки на скачивание
     if f"/download_card/{card_id}" not in r.text:
         die(ExitStatus.MUMBLE, f"Download link not found in /view_card/{card_id}")
@@ -332,7 +332,7 @@ def _download_postcard(s, card_id):
         die(ExitStatus.DOWN, f"Failed to download postcard: {e}")
     
     if r.status_code != 200:
-        die(ExitStatus.MUMBLE, f"Unexpected /download_card/{card_id} status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected /download_card/{card_id} status code {r.status_code}")
     if not r.content:
         die(ExitStatus.MUMBLE, f"Empty data downloaded for card {card_id}")
         
@@ -347,7 +347,7 @@ def _set_sign(s, sign):
         die(ExitStatus.DOWN, f"Failed to update signature: {e}")
     
     if r.status_code != 200:
-        die(ExitStatus.MUMBLE, f"Unexpected update singature status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Unexpected update singature status code {r.status_code}")
 
 def _ImgDecrypt(image, _len=40):
     _log(f"Image decrypt start")
@@ -418,7 +418,7 @@ def Register(host):
     r = s1.get("/login")
     
     if r.status_code != 200:        # а это доступно?
-        die(ExitStatus.MUMBLE, f"Failed to access login page after registration, status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Failed to access login page after registration, status code {r.status_code}")
 
 def Login(host):
     _log("Checking login")
@@ -429,7 +429,7 @@ def Login(host):
     r = s1.get("/profile")
     
     if r.status_code != 200:        # а это доступно?
-        die(ExitStatus.MUMBLE, f"Failed to access main page after login, status code {r.status_code}")     
+        die(ExitStatus.DOWN, f"Failed to access main page after login, status code {r.status_code}")     
         
 def Friend_add_Profile_page(host):
     _log("Checking friend add and profile page")
@@ -587,7 +587,7 @@ def List_of_users_check(host):
     r = s1.get("/users")
     
     if r.status_code != 200:        # а это доступно?
-        die(ExitStatus.MUMBLE, f"Failed to access users page after login, status code {r.status_code}")
+        die(ExitStatus.DOWN, f"Failed to access users page after login, status code {r.status_code}")
     # начинаем искать пользователей
     soup = BeautifulSoup(r.text, 'html.parser')
     logins = []
