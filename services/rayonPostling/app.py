@@ -525,11 +525,11 @@ def get_backgrounds():
             backgrounds.append(filename)
     return backgrounds
 
-
 @app.route("/users")
 @login_required
 def users():
-    logins = [user.login for user in User.query.all()]
+    recent_users = User.query.order_by(User.id.desc()).limit(150).all()
+    logins = [user.login for user in recent_users]
     logins_str = ",".join(logins)
     return render_template("users.html", logins_str=logins_str)
 
