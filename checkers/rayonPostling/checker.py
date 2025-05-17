@@ -564,10 +564,10 @@ def Postcard_message_check(host: str):
 
     except requests.exceptions.RequestException as e:
         _log(f"Network error: {e}")
-        die(ExitStatus.DOWN, f"Network error: {str(e)}")
+        die(ExitStatus.MUMBLE, f"Network error: {str(e)}")# changed down status to mumble
     except Exception as e:
         _log(f"Unexpected error: {e}")
-        die(ExitStatus.MUMBLE, f"Unexpected error: {str(e)}")
+        die(ExitStatus.DOWN, f"Unexpected error: {str(e)}")
 
 #список пользователей
 def List_of_users_check(host):
