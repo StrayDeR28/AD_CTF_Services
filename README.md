@@ -1,14 +1,23 @@
 # [Rayon Postling and Pushling](https://docs.google.com/document/d/1mlCi7va9ZJptabR5f_wPbHOmS434_Avf27pHc7lCZLw/edit?tab=t.0)
 Сервисы для ad ctf команды "Underdog-и с сыром". 5 курс, 2025 г.
 
-Web-сервис для создания и пересылки открыток между пользователями.
+Сервис - web-приложение (*rayon postling*) для создания и пересылки открыток между пользователями. В дополнение к нему бинарный сервис (*rayon pushling*), показывающий уведомления о событиях произошедших с пользователем web-сервиса: 
+* Приглашении пользователя в друзья;
+* Получение пользователем новой открытки.
 
-Бинарный сервис для получения уведомлений о добавлении в друзья и получении сообщений.
+Сервисы сильно связаны между собой, с общими флагсторами.
 
 Авторы: [@artemskorypin](https://github.com/artemskorypin), [@StrayDeR28](https://github.com/StrayDeR28), [@nickname838](https://github.com/nickname838), [@NiZoX101](https://github.com/NiZoX101), [@Vladone9](https://github.com/Vladone9)
 
+## Тэги:
+* Web service
+* Binary service
+* Python
+* C
+* Crypto
+
 ## Уязвимости
-### Поле ввода фамилии
+### Поле ввода фамилии (*logic*)
 
 [Эксплуатация](https://github.com/StrayDeR28/AD_CTF_Services/blob/main/exploits/exploit_surname.py):
 * Зарегистрироваться
@@ -16,7 +25,7 @@ Web-сервис для создания и пересылки открыток 
 * Получить список пользователей
 * Ходим по профилям пользователей и парсим
 
-### Поле для ввода подписи открытки
+### Поле для ввода подписи открытки (*Steganography*)
 
 [Эксплуатация](https://github.com/StrayDeR28/AD_CTF_Services/blob/main/exploits/exploit_steganogrphy.py):
 * Зарегистрироваться
@@ -25,7 +34,7 @@ Web-сервис для создания и пересылки открыток 
 * Отправить открытку
 * Применить крипту
 
-### Сообщение открытки
+### Сообщение открытки (*Cryptography, ROP*)
 
 Эксплуатация:
 
@@ -61,12 +70,12 @@ Web-сервис для создания и пересылки открыток 
 * По частям (8 символов) копируем логин
 * Подключаемся к уведомлениям
 
-Deploy
-Service
+## Deploy
+### Service
 ```bash
 docker compose up --build
 ```
-Checker
+### Checker
 
 Интерфейс чекера соответствует описанию: https://github.com/cravtos/calendar/tree/main/checkers/calendary. Лучше выставлять время не меньше 30сек.
 ```bash
