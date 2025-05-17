@@ -533,11 +533,12 @@ def Postcard_message_check(host: str):
         p.sendline(b'1')
         
         # Проверка на вывод правильного логина после дешифрования токена
-        line = p.recvline(timeout=10)
-        if username1 not in line:
+        line = p.recvuntil(f"Сообщения за последние 10 минут для {username1}".encode('utf-8'), timeout=10)
+        decoded_line = line.decode('utf-8', errors='ignore').strip()
+        if username1 not in decoded_line:
             p.close()
             _log("Unrecognized username")
-            die(ExitStatus.MUMBLE, "Unrecognized username")
+            die(ExitStatus.MUMBLE, f"Unrecognized username: username1: {username1}, decoded line: {decoded_line}")
 
         # Формируем ожидаемую строку
         expected_line = f"Новая открытка от {username2}, сообщение: {test_message}"
